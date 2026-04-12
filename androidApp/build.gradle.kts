@@ -11,6 +11,14 @@ kotlin {
             dependencies {
                 implementation(project(":shared"))
                 implementation(libs.androidx.navigation.compose)
+                implementation(compose.runtime)
+                implementation(compose.foundation)
+                implementation(compose.material)
+                implementation(compose.ui)
+                @OptIn(org.jetbrains.compose.ExperimentalComposeLibrary::class)
+                implementation(compose.components.resources)
+                implementation(libs.koin.android)
+                implementation(libs.koin.compose)
             }
         }
     }

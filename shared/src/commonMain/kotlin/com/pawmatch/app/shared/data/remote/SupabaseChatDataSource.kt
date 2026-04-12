@@ -9,6 +9,8 @@ import io.github.jan.supabase.realtime.channel
 import io.github.jan.supabase.realtime.postgresChangeFlow
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.mapNotNull
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.decodeFromJsonElement
 
 class SupabaseChatDataSource(
     private val supabaseClient: SupabaseClient
@@ -48,7 +50,7 @@ class SupabaseChatDataSource(
         }
         
         return changeFlow.mapNotNull { action ->
-            action.decodeRecord<MessageDto>()
+            action.record?.let { Json { ignoreUnknownKeys = true }.decodeFromJsonElement<MessageDto>(it) }
         }
     }
 }

@@ -62,10 +62,10 @@ class SupabasePetDataSource(
 
     suspend fun uploadPetPhoto(petId: String, photoBytes: ByteArray, extension: String): String {
         val bucket = supabaseClient.storage["pet-photos"]
-        val fileName = "$userId/$petId/photo_${auth.currentUserOrNull()?.id ?: "unknown"}_${kotlin.random.Random.nextInt()}.$extension"
+        val fileName = "$userId/$petId/photo_${userId}_${kotlin.random.Random.nextInt()}.$extension"
         
         bucket.upload(fileName, photoBytes, upsert = true)
-        return bucket.publicUrl(fileName)
+        return "${supabaseClient.supabaseUrl}/storage/v1/object/public/pet-photos/$fileName"
     }
 
     suspend fun getDiscoverablePets(): List<PetDto> {

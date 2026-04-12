@@ -9,6 +9,8 @@ import io.github.jan.supabase.realtime.channel
 import io.github.jan.supabase.realtime.postgresChangeFlow
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.mapNotNull
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.decodeFromJsonElement
 
 class SupabaseMatchDataSource(
     private val supabaseClient: SupabaseClient
@@ -36,17 +38,16 @@ class SupabaseMatchDataSource(
         val changeFlow = channel.postgresChangeFlow<PostgresAction.Insert>(schema = "public") {
             table = "matches"
         }
-        
         // Suscribirse asíncronamente al channel si no lo está (manejo corrutinas internamente)
         // en esta abstracción, el flow inicia la sub cuando lo recogen
         
         return changeFlow.mapNotNull { action ->
             val record = action.record
             // Mapeamos el JSON dinámico usando kotlinx.serialization que Supabase provee en action.decodeRecord() o iterando
-            val matchDto = action.decodeRecord<MatchDto>()
+            val matchDto = record?.let { Json { ignoreUnknownKeys = true }.decodeFromJsonElement<MatchDto>(it) }
             
             // Fíltralo solo si aplica a nosotros, por si acaso
-            if (matchDto.pet1Id == petId || matchDto.pet2Id == petId) {
+            if (matchDto != null && (matchDto.pet1Id == petId || matchDto.pet2Id == petId)) {
                 matchDto
             } else {
                 null
