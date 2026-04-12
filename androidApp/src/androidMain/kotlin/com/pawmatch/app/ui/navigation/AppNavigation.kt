@@ -10,6 +10,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.pawmatch.app.ui.auth.LoginScreen
+import com.pawmatch.app.ui.onboarding.OnboardingScreen
+import com.pawmatch.app.ui.dashboard.DashboardScreen
 
 @Composable
 fun AppNavigation() {
@@ -19,18 +21,25 @@ fun AppNavigation() {
         composable("login") {
             LoginScreen(
                 onNavigateToHome = {
-                    navController.navigate("home") {
+                    navController.navigate("onboarding") {
                         popUpTo("login") { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        composable("onboarding") {
+            OnboardingScreen(
+                onFinish = {
+                    navController.navigate("home") {
+                        popUpTo("onboarding") { inclusive = true }
                     }
                 }
             )
         }
         
         composable("home") {
-            // Un placeholder para la Home mientras la implementamos después
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(text = "¡Has iniciado sesión exitosamente en PawMatch!")
-            }
+            DashboardScreen()
         }
     }
 }

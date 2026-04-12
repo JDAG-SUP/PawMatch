@@ -67,4 +67,10 @@ class SupabasePetDataSource(
         bucket.upload(fileName, photoBytes, upsert = true)
         return bucket.publicUrl(fileName)
     }
+
+    suspend fun getDiscoverablePets(): List<PetDto> {
+        return supabaseClient.postgrest["pets"]
+            .select { filter { neq("owner_id", userId) } }
+            .decodeList<PetDto>()
+    }
 }

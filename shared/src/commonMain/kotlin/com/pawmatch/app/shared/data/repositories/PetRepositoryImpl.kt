@@ -39,6 +39,10 @@ class PetRepositoryImpl(
         petDataSource.uploadPetPhoto(petId, photoBytes, fileExtension)
     }
 
+    override suspend fun getDiscoverablePets(): Result<List<Pet>> = runCatching {
+        petDataSource.getDiscoverablePets().map { it.toDomain() }
+    }
+
     // --- Mappers ---
     
     private fun UserProfileDto.toDomain() = UserProfile(

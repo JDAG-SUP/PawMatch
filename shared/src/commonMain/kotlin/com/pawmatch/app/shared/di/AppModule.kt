@@ -14,6 +14,13 @@ import com.pawmatch.app.shared.presentation.viewmodels.AuthViewModel
 import com.pawmatch.app.shared.data.remote.SupabasePetDataSource
 import com.pawmatch.app.shared.data.repositories.PetRepositoryImpl
 import com.pawmatch.app.shared.domain.repositories.PetRepository
+import com.pawmatch.app.shared.presentation.viewmodels.PetViewModel
+import com.pawmatch.app.shared.presentation.viewmodels.DiscoveryViewModel
+import com.pawmatch.app.shared.presentation.viewmodels.ProfileViewModel
+import com.pawmatch.app.shared.domain.repositories.MatchRepository
+import com.pawmatch.app.shared.data.repositories.MatchRepositoryImpl
+import com.pawmatch.app.shared.data.remote.SupabaseMatchDataSource
+import com.pawmatch.app.shared.presentation.viewmodels.MatchViewModel
 
 val appModule: Module = module {
     single {
@@ -36,6 +43,14 @@ val appModule: Module = module {
     single { SupabasePetDataSource(get()) }
     single<PetRepository> { PetRepositoryImpl(get()) }
     
+    // Match Data
+    single { SupabaseMatchDataSource(get()) }
+    single<MatchRepository> { MatchRepositoryImpl(get(), get()) }
+    
     // ViewModels
     factory { AuthViewModel(get()) }
+    factory { PetViewModel(get()) }
+    factory { DiscoveryViewModel(get(), get()) }
+    factory { ProfileViewModel(get()) }
+    factory { MatchViewModel(get(), get()) }
 }

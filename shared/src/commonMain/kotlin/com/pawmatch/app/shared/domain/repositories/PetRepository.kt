@@ -13,4 +13,6 @@ interface PetRepository {
     suspend fun deletePet(petId: String): Result<Unit>
     
     suspend fun uploadPetPhoto(petId: String, photoBytes: ByteArray, fileExtension: String): Result<String>
+
+    suspend fun getDiscoverablePets(): Result<List<Pet>>
 }
