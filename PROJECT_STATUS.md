@@ -7,7 +7,7 @@ Este documento detalla rigurosamente el estatus del Programa (basado en el PRD O
 ## 🟢 Etapas Completadas o Parcialmente Completadas
 
 ### Fase F01: Autenticación y Seguridad
-- **Estado**: ✅ Completada.
+- **Estado**: Completada.
 - **Implementado**: 
   - SDK de Supabase Auth funcional en la capa KMM para Email y Password.
   - Gestión de tokens/JWT y estado intermitente (Guardado de Sesión local) administrados en el `AuthViewModel`.
@@ -15,22 +15,22 @@ Este documento detalla rigurosamente el estatus del Programa (basado en el PRD O
 - **Faltante/Para Futuro**: El PRD mencionaba acceso rápido por Redes Sociales (Google / Apple OAuth2). Se acordó mutuamente posponerlo para favorecer el MVP Core usando sólo credenciales directas.
 
 ### Fase F02: Gestión de Perfiles y Mascotas (Onboarding)
-- **Estado**: 🟡 Parcialmente Completado.
+- **Estado**: Parcialmente Completado.
 - **Implementado**:
   - Modelo de dominio relacional (`UserProfile` y `Pet`) con mapeos DTO.
   - Pantallas dinámicas animadas para crear la Biografía (Ajustes de Perfil) y asignar dueños.
   - Botón de listado local (Mi Perfil) con capacidad de destruir (Delete) los historiales e inventarios de mascotas in-situ.
-- **Parcial / Pospuesto**: Las fotos de las mascotas. Aunque el repositorio compartido de Kotlin y los Scripts en DB de Supabase ya traen los Buckets de `Storage` activados y listos (`uploadPetPhoto`), pospusimos la incrustación gráfica del Selector de Galerías nativo (*Image Picker*) porque excede la inmediatez de un MVP y requiere permisos engorrosos de Intents/FileManagers en Android y iOS independientemente.
+- **Parcial / Pospuesto**: Las fotos de las mascotas. Aunque el repositorio compartido de Kotlin y los Scripts en DB de Supabase ya traen los Buckets de `Storage` activados y listos (`uploadPetPhoto`), pospusimos la incrustación gráfica del Selector de Galerías nativo (*Image Picker*) porque excede la inmediatez de un MVP y requiere permisos de Intents/FileManagers en Android y iOS independientemente.
 
 ### Fase F03: Descubrimiento y Feed
-- **Estado**: ✅ Completada.
+- **Estado**: Completada.
 - **Implementado**:
   - Mecanismo en memoria de UI (Jetpack Compose Custom) para efectuar el *Swipe* hacia izquierda y derecha rotando cartas animadamente, todo bajo enfoques de Cero-Dependencias externas (solo Corrutinas).
   - Listas exclusivas: El `SupabasePetDataSource` filtra tus propias interacciones y esconde a tus perros para evitar el 'AutoSwipe'.
 - **Para Futuro**: Mejoramiento del Query en BD usando las directivas espaciales (PostGIS) instaladas para filtrar no solo por novedad, sino por una coordenada de distancia concéntrica al dispositivo.
 
 ### Fase F04: Matcheo (Mutuo Acuerdo)
-- **Estado**: ✅ Completada.
+- **Estado**: Completada.
 - **Implementado**:
   - SQL Triggers de alta seguridad directamente en el Postgrest. Funciona en Background comparando el historial si Firulais le dio like a Otto, registrándolo en la tabla `Matches`.
   - Escucha de notificaciones push a través del Suscriptor Websocket para desplegar matches locales al instante de recibirlos.
