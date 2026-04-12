@@ -30,6 +30,8 @@ fun LoginScreen(
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
 
+    var isRegisterMode by remember { mutableStateOf(false) }
+
     // Redirigir si está autenticado
     LaunchedEffect(uiState) {
         if (uiState is AuthState.Authenticated) {
@@ -102,7 +104,10 @@ fun LoginScreen(
             }
 
             Button(
-                onClick = { viewModel.signIn(email, password) },
+                onClick = { 
+                    if (isRegisterMode) viewModel.signUp(email, password) 
+                    else viewModel.signIn(email, password) 
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
@@ -113,17 +118,21 @@ fun LoginScreen(
                 if (uiState is AuthState.Loading) {
                     CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
                 } else {
-                    Text(text = "Iniciar Sesión", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+                    Text(text = if (isRegisterMode) "Crear cuenta" else "Iniciar Sesión", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
                 }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
             TextButton(
-                onClick = { viewModel.signUp(email, password) },
-                enabled = email.isNotBlank() && password.isNotBlank() && uiState !is AuthState.Loading
+                onClick = { isRegisterMode = !isRegisterMode },
+                enabled = uiState !is AuthState.Loading
             ) {
-                Text(text = "¿No tienes cuenta? Regístrate aquí", color = MaterialTheme.colors.onBackground)
+                Text(
+                    text = if (isRegisterMode) "¿Ya tienes cuenta? Inicia sesión" else "¿No tienes cuenta? Regístrate aquí", 
+                    color = MaterialTheme.colors.onBackground,
+                    fontWeight = FontWeight.Medium
+                )
             }
         }
     }
