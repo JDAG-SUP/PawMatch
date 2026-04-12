@@ -11,6 +11,9 @@ import com.pawmatch.app.shared.domain.repositories.AuthRepository
 import com.pawmatch.app.shared.data.remote.SupabaseAuthDataSource
 import com.pawmatch.app.shared.data.repositories.AuthRepositoryImpl
 import com.pawmatch.app.shared.presentation.viewmodels.AuthViewModel
+import com.pawmatch.app.shared.data.remote.SupabasePetDataSource
+import com.pawmatch.app.shared.data.repositories.PetRepositoryImpl
+import com.pawmatch.app.shared.domain.repositories.PetRepository
 
 val appModule: Module = module {
     single {
@@ -28,6 +31,10 @@ val appModule: Module = module {
     // Auth Data
     single { SupabaseAuthDataSource(get()) }
     single<AuthRepository> { AuthRepositoryImpl(get()) }
+    
+    // Pet Data
+    single { SupabasePetDataSource(get()) }
+    single<PetRepository> { PetRepositoryImpl(get()) }
     
     // ViewModels
     factory { AuthViewModel(get()) }
