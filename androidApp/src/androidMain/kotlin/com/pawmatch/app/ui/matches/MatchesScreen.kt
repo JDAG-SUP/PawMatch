@@ -22,7 +22,10 @@ import com.pawmatch.app.ui.theme.PrimaryPink
 import org.koin.compose.koinInject
 
 @Composable
-fun MatchesScreen(viewModel: MatchViewModel = koinInject()) {
+fun MatchesScreen(
+    onChatClick: (String) -> Unit,
+    viewModel: MatchViewModel = koinInject()
+) {
     val uiState by viewModel.uiState.collectAsState()
 
     Box(
@@ -85,7 +88,7 @@ fun MatchesScreen(viewModel: MatchViewModel = koinInject()) {
                                     Text(text = "Match #${match.matchId.take(4).uppercase()}", fontSize = 18.sp, fontWeight = FontWeight.Bold)
                                     Text(text = "Con la mascota ID: ${match.matchedPetId.take(6)}...", color = Color.Gray, fontSize = 14.sp)
                                 }
-                                IconButton(onClick = { /* TODO: Open Chat */ }, modifier = Modifier.background(PrimaryPink.copy(alpha = 0.1f), RoundedCornerShape(8.dp))) {
+                                IconButton(onClick = { onChatClick(match.matchId) }, modifier = Modifier.background(PrimaryPink.copy(alpha = 0.1f), RoundedCornerShape(8.dp))) {
                                     Icon(Icons.Default.Email, contentDescription = "Chatear", tint = PrimaryPink)
                                 }
                             }

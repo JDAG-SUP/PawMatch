@@ -16,7 +16,7 @@ import com.pawmatch.app.ui.profile.ProfileScreen
 import com.pawmatch.app.ui.theme.PrimaryPink
 
 @Composable
-fun DashboardScreen() {
+fun DashboardScreen(onNavigateToChat: (String) -> Unit) {
     var selectedTab by remember { mutableStateOf(0) }
 
     Scaffold(
@@ -55,7 +55,7 @@ fun DashboardScreen() {
         Box(modifier = Modifier.padding(padding)) {
             when (selectedTab) {
                 0 -> DiscoveryScreen()
-                1 -> MatchesScreen()
+                1 -> MatchesScreen(onChatClick = onNavigateToChat)
                 2 -> ProfileScreen()
             }
         }

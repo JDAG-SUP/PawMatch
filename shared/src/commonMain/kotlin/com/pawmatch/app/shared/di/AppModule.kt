@@ -21,6 +21,10 @@ import com.pawmatch.app.shared.domain.repositories.MatchRepository
 import com.pawmatch.app.shared.data.repositories.MatchRepositoryImpl
 import com.pawmatch.app.shared.data.remote.SupabaseMatchDataSource
 import com.pawmatch.app.shared.presentation.viewmodels.MatchViewModel
+import com.pawmatch.app.shared.domain.repositories.ChatRepository
+import com.pawmatch.app.shared.data.repositories.ChatRepositoryImpl
+import com.pawmatch.app.shared.data.remote.SupabaseChatDataSource
+import com.pawmatch.app.shared.presentation.viewmodels.ChatViewModel
 
 val appModule: Module = module {
     single {
@@ -47,10 +51,15 @@ val appModule: Module = module {
     single { SupabaseMatchDataSource(get()) }
     single<MatchRepository> { MatchRepositoryImpl(get(), get()) }
     
+    // Chat Data
+    single { SupabaseChatDataSource(get()) }
+    single<ChatRepository> { ChatRepositoryImpl(get()) }
+    
     // ViewModels
     factory { AuthViewModel(get()) }
     factory { PetViewModel(get()) }
     factory { DiscoveryViewModel(get(), get()) }
     factory { ProfileViewModel(get()) }
     factory { MatchViewModel(get(), get()) }
+    factory { ChatViewModel(get()) }
 }

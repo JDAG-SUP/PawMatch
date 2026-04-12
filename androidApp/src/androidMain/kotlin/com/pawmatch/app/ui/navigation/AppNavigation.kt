@@ -39,7 +39,19 @@ fun AppNavigation() {
         }
         
         composable("home") {
-            DashboardScreen()
+            DashboardScreen(
+                onNavigateToChat = { matchId ->
+                    navController.navigate("chat/$matchId")
+                }
+            )
+        }
+
+        composable("chat/{matchId}") { backStackEntry ->
+            val matchId = backStackEntry.arguments?.getString("matchId") ?: ""
+            com.pawmatch.app.ui.chat.ChatScreen(
+                matchId = matchId,
+                onBack = { navController.popBackStack() }
+            )
         }
     }
 }
