@@ -4,10 +4,18 @@ import android.util.Log
 import com.google.firebase.firestore.FirebaseFirestore
 import com.pawmatch.app.models.Pet
 import com.pawmatch.app.models.User
+import com.pawmatch.app.models.Match
 import kotlinx.coroutines.tasks.await
 
-suspend fun seedDatabaseIfEmpty(db: FirebaseFirestore, currentCity: String, currentUserPreference: String) {
+suspend fun seedDatabaseIfEmpty(db: FirebaseFirestore, currentCity: String, currentUserPreference: String, currentUserId: String) {
     try {
+        // Inject fake match unconditionally to guarantee the Matches Screen is populated
+        if (currentUserId.isNotEmpty()) {
+            val matchId = if (currentUserId < "mock_1") "${currentUserId}_mock_1" else "mock_1_${currentUserId}"
+            val match = Match(id = matchId, userAId = currentUserId, userBId = "mock_1", timestamp = System.currentTimeMillis())
+            db.collection("matches").document(matchId).set(match).await()
+        }
+
         val mockValidation = db.collection("pets").document("mock_pet_1").get().await()
         if (mockValidation.exists()) {
             Log.d("SeedData", "Database mock already exists. Skipping.")
@@ -38,6 +46,13 @@ suspend fun seedDatabaseIfEmpty(db: FirebaseFirestore, currentCity: String, curr
         for (profile in mockProfiles) {
             db.collection("users").document(profile.first.id).set(profile.first).await()
             db.collection("pets").document(profile.second.id).set(profile.second).await()
+        }
+
+        // Inject fake match
+        if (currentUserId.isNotEmpty()) {
+            val matchId = if (currentUserId < "mock_1") "${currentUserId}_mock_1" else "mock_1_${currentUserId}"
+            val match = Match(id = matchId, userAId = currentUserId, userBId = "mock_1", timestamp = System.currentTimeMillis())
+            db.collection("matches").document(matchId).set(match).await()
         }
         
         Log.d("SeedData", "Seeding successful!")

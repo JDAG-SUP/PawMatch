@@ -11,8 +11,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.outlined.LocationOn
+import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -57,9 +57,7 @@ fun SwipeScreen(modifier: Modifier = Modifier) {
                 currentUser = userDoc.toObject(User::class.java)
 
                 if (currentUser != null && currentUser!!.city.isNotEmpty()) {
-                    
-                    // Llama al script de semillas de forma pasiva para UI
-                    seedDatabaseIfEmpty(db, currentUser!!.city, currentUser!!.preferenceAnimalType.ifEmpty { "Perro" })
+                    seedDatabaseIfEmpty(db, currentUser!!.city, currentUser!!.preferenceAnimalType.ifEmpty { "Perro" }, currentUserId)
 
                     val petQuery = db.collection("pets")
                         .whereEqualTo("city", currentUser!!.city)
@@ -93,7 +91,7 @@ fun SwipeScreen(modifier: Modifier = Modifier) {
                 CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
             } else if (currentUser?.city.isNullOrEmpty()) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(32.dp)) {
-                    Text("¡Bienvenido a PawMatch!", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                    Text("¡Bienvenido a PetMatch!", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                     Spacer(Modifier.height(16.dp))
                     Text("Por favor completa tu Perfil Primero desde la barra de navegación para poder descubrir compañeros peludos.", 
                         style = MaterialTheme.typography.bodyLarge, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
@@ -101,6 +99,7 @@ fun SwipeScreen(modifier: Modifier = Modifier) {
             } else if (petsToSwipe.isEmpty()) {
                 Text("No hay más mascotas en tu zona \uD83D\uDE22", style = MaterialTheme.typography.headlineSmall, color = Color.Gray)
             } else {
+                
                 petsToSwipe.forEachIndexed { index, pet ->
                     if (index >= petsToSwipe.size - 2) {
                         key(pet.id) {
@@ -118,6 +117,29 @@ fun SwipeScreen(modifier: Modifier = Modifier) {
                                 }
                             )
                         }
+                    }
+                }
+            }
+            
+            // Custom Top Bar overlay over cards
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.TopCenter)
+                    .padding(horizontal = 24.dp, vertical = 24.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("PetMatch", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary)
+                Surface(
+                    shape = CircleShape,
+                    color = Color.White,
+                    shadowElevation = 2.dp,
+                    modifier = Modifier.size(40.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(Icons.Outlined.Tune, contentDescription = "Filtros", tint = MaterialTheme.colorScheme.onBackground)
+                        Box(modifier = Modifier.size(8.dp).offset(10.dp, (-10).dp).background(Color.Red, CircleShape)) // Red notification dot
                     }
                 }
             }
@@ -149,16 +171,15 @@ fun SwipeCardWithGestures(
     onSwipeLeft: () -> Unit,
     onSwipeRight: () -> Unit
 ) {
-    var currentImageIndex by remember { mutableIntStateOf(0) }
     val offsetX = remember { Animatable(0f) }
     val offsetY = remember { Animatable(0f) }
     val rotation = remember { Animatable(0f) }
     val coroutineScope = rememberCoroutineScope()
 
-    Card(
+    Box(
         modifier = Modifier
-            .fillMaxWidth(0.95f)
-            .fillMaxHeight(0.85f)
+            .fillMaxSize()
+            .padding(top = 80.dp, bottom = 40.dp, start = 16.dp, end = 16.dp)
             .offset { IntOffset(offsetX.value.roundToInt(), offsetY.value.roundToInt()) }
             .graphicsLayer {
                 rotationZ = rotation.value
@@ -199,85 +220,116 @@ fun SwipeCardWithGestures(
                         )
                     }
                 } else Modifier
-            ),
-        shape = RoundedCornerShape(32.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-        elevation = CardDefaults.cardElevation(defaultElevation = if (isTopCard) 12.dp else 4.dp)
-    ) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            if (pet.imageUrls.isNotEmpty()) {
-                AsyncImage(
-                    model = pet.imageUrls[currentImageIndex],
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
-                )
-            } else {
-                 Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.secondaryContainer), contentAlignment = Alignment.Center) {
-                     Icon(Icons.Default.Favorite, contentDescription = null, modifier = Modifier.size(80.dp), tint = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha=0.3f))
-                 }
-            }
-
-            // Glassmorphism Overlay Gradiente
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(Color.Transparent, Color.Transparent, Color.Black.copy(alpha = 0.85f)),
-                            startY = 0f
-                        )
-                    )
             )
+            .clip(RoundedCornerShape(24.dp))
+            .background(Color.LightGray)
+    ) {
+        if (pet.imageUrls.isNotEmpty()) {
+            AsyncImage(
+                model = pet.imageUrls[0],
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+        } else {
+             Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.secondaryContainer), contentAlignment = Alignment.Center) {
+                 Icon(Icons.Default.Favorite, contentDescription = null, modifier = Modifier.size(80.dp), tint = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha=0.3f))
+             }
+        }
 
-            // Contenido Textual Premium
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .align(Alignment.BottomStart)
-                    .padding(24.dp)
+        // Glassmorphism Overlay
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxHeight(0.6f)
+                .align(Alignment.BottomCenter)
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.9f)),
+                        startY = 0f
+                    )
+                )
+        )
+
+        // Progress Bar Mock (Top)
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(16.dp).align(Alignment.TopCenter),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+             Box(modifier = Modifier.weight(1f).height(3.dp).background(Color.White, RoundedCornerShape(2.dp)))
+             Box(modifier = Modifier.weight(1f).height(3.dp).background(Color.White.copy(alpha=0.3f), RoundedCornerShape(2.dp)))
+        }
+
+        // Contenido Textual
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.BottomStart)
+                .padding(24.dp)
+                .padding(bottom = 70.dp) // Leave space for floating buttons
+        ) {
+            Text(text = "${pet.name}, ${pet.age}", style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.ExtraBold), color = Color.White)
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(text = pet.breed, style = MaterialTheme.typography.titleMedium, color = Color.White.copy(alpha = 0.9f))
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Outlined.LocationOn, contentDescription = null, tint = Color.White.copy(alpha = 0.8f), modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(text = "A 1 km", style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.8f))
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(text = pet.shortDescription, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.primaryContainer)
+        }
+
+        // Overlay Buttons (Exactly like mockup)
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.BottomCenter)
+                .offset(y = 28.dp) // half-outside
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.Bottom) {
-                    Text(text = pet.name, style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.ExtraBold), color = Color.White)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(text = pet.age, style = MaterialTheme.typography.headlineSmall, color = Color.White.copy(alpha = 0.9f))
+                Surface(
+                    shape = CircleShape,
+                    color = Color.White,
+                    shadowElevation = 8.dp,
+                    modifier = Modifier.size(72.dp).clickable {
+                        if(isTopCard) coroutineScope.launch {
+                            launch { offsetX.animateTo(-1500f, tween(300)) }
+                            launch { rotation.animateTo(-15f, tween(300)) }
+                            kotlinx.coroutines.delay(200)
+                            onSwipeLeft()
+                        }
+                    }
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                         Icon(Icons.Default.Close, contentDescription = "Pass", tint = Color(0xFFFF5252), modifier = Modifier.size(36.dp))
+                    }
                 }
-                Spacer(modifier = Modifier.height(4.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Favorite, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(text = "${pet.breed} • ${pet.city}", style = MaterialTheme.typography.titleMedium, color = Color.White.copy(alpha = 0.85f))
-                }
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(text = pet.shortDescription, style = MaterialTheme.typography.bodyLarge, color = Color.White.copy(alpha = 0.9f))
                 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.width(32.dp))
                 
-                // Botones Action
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                    IconButton(
-                        onClick = { 
-                            if(isTopCard) coroutineScope.launch {
-                                launch { offsetX.animateTo(-1500f, tween(300)) }
-                                launch { rotation.animateTo(-15f, tween(300)) }
-                                kotlinx.coroutines.delay(200)
-                                onSwipeLeft()
-                            }
-                        },
-                        modifier = Modifier.size(72.dp).shadow(12.dp, CircleShape).clip(CircleShape).background(Color.White)
-                    ) { Icon(Icons.Default.Close, contentDescription = "Pass", tint = Color(0xFFFF5252), modifier = Modifier.size(40.dp)) }
-                    
-                    IconButton(
-                        onClick = { 
-                             if(isTopCard) coroutineScope.launch {
-                                launch { offsetX.animateTo(1500f, tween(300)) }
-                                launch { rotation.animateTo(15f, tween(300)) }
-                                kotlinx.coroutines.delay(200)
-                                onSwipeRight()
-                            }
-                        },
-                        modifier = Modifier.size(72.dp).shadow(12.dp, CircleShape).clip(CircleShape).background(Color.White)
-                    ) { Icon(Icons.Default.Favorite, contentDescription = "Like", tint = Color(0xFF4CAF50), modifier = Modifier.size(40.dp)) }
+                Surface(
+                    shape = CircleShape,
+                    color = Color.White,
+                    shadowElevation = 8.dp,
+                    modifier = Modifier.size(72.dp).clickable {
+                        if(isTopCard) coroutineScope.launch {
+                            launch { offsetX.animateTo(1500f, tween(300)) }
+                            launch { rotation.animateTo(15f, tween(300)) }
+                            kotlinx.coroutines.delay(200)
+                            onSwipeRight()
+                        }
+                    }
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                         Icon(Icons.Default.Favorite, contentDescription = "Like", tint = Color(0xFF4DE879), modifier = Modifier.size(36.dp))
+                    }
                 }
             }
         }

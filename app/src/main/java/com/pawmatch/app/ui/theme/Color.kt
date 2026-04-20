@@ -2,40 +2,40 @@ package com.pawmatch.app.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Premium PawMatch Color Palette
-val VibrantCoral = Color(0xFFFF6B6B)
-val LightCoral = Color(0xFFFF8E8B)
-val DarkCoral = Color(0xFFC93B3B)
+// PetMatch Mockup Colors
+val CreamBackground = Color(0xFFF3F1E7) // Fondo global cremoso
+val DeepCoral = Color(0xFFCE6A52) // Logo PetMatch y Botones Prmarios
+val LightCoral = Color(0xFFF6E2DB) // Chips de Gatos/Perros
+val CoralAccent = Color(0xFFF2A388) // Switches y toggles
 
-val PremiumOnyx = Color(0xFF1E1E1E)
-val CharcoalGray = Color(0xFF2C2C2E)
+val WhiteSurface = Color(0xFFFFFFFF)
+val DarkText = Color(0xFF3B2F2A)
+val GrayText = Color(0xFF8B8B8B)
+val LightGraySurface = Color(0xFFF4F4F4) // para campos inactivos
 
-val EarthTone1 = Color(0xFFD6C8B4)
-val EarthTone2 = Color(0xFFE5DECB)
+val LikeGreen = Color(0xFF45DE74)
+val PassRed = Color(0xFFFF4855)
 
-val PureWhite = Color(0xFFFFFFFF)
-val OffWhite = Color(0xFFF9F9F9)
-
-// Light Theme Colors
-val LightPrimary = VibrantCoral
-val LightOnPrimary = PureWhite
+// Themed Colors
+val LightPrimary = DeepCoral
+val LightOnPrimary = WhiteSurface
 val LightPrimaryContainer = LightCoral
-val LightOnPrimaryContainer = PureWhite
-val LightSecondary = EarthTone1
-val LightOnSecondary = PremiumOnyx
-val LightBackground = OffWhite
-val LightSurface = PureWhite
-val LightOnBackground = PremiumOnyx
-val LightOnSurface = PremiumOnyx
+val LightOnPrimaryContainer = DeepCoral
+val LightSecondary = CoralAccent
+val LightOnSecondary = WhiteSurface
+val LightBackground = CreamBackground
+val LightSurface = WhiteSurface
+val LightOnBackground = DarkText
+val LightOnSurface = DarkText
 
-// Dark Theme Colors
-val DarkPrimary = VibrantCoral
-val DarkOnPrimary = PureWhite
-val DarkPrimaryContainer = DarkCoral
-val DarkOnPrimaryContainer = PureWhite
-val DarkSecondary = EarthTone2
-val DarkOnSecondary = PremiumOnyx
-val DarkBackground = PremiumOnyx
-val DarkSurface = CharcoalGray
-val DarkOnBackground = PureWhite
-val DarkOnSurface = PureWhite
+// Dark Theme Colors (Optional inversion)
+val DarkPrimary = DeepCoral
+val DarkOnPrimary = WhiteSurface
+val DarkPrimaryContainer = DarkText
+val DarkOnPrimaryContainer = CoralAccent
+val DarkSecondary = CoralAccent
+val DarkOnSecondary = DarkText
+val DarkBackground = Color(0xFF1A1A1A)
+val DarkSurface = Color(0xFF262626)
+val DarkOnBackground = CreamBackground
+val DarkOnSurface = CreamBackground
