@@ -1,3 +1,18 @@
+/*
+ * Copyright 2026 Vincent Tsen
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.pawmatch.app.ui.screens
 
 import android.widget.Toast
@@ -56,28 +71,32 @@ fun ProfileScreen(modifier: Modifier = Modifier) {
     // Cargar perfil existente si lo hay
     LaunchedEffect(currentUserId) {
         if (currentUserId.isNotEmpty()) {
-            val userDoc = db.collection("users").document(currentUserId).get().await()
-            val user = userDoc.toObject(User::class.java)
-            if (user != null) {
-                name = user.name
-                city = user.city.ifEmpty { "Bogotá" }
-                whatsappNumber = user.whatsappNumber
-                bio = user.bio
-                preferenceAnimalType = user.preferenceAnimalType.ifEmpty { "Perro" }
-            }
-
-            // Buscar la primer mascota (MVP)
-            val petQuery = db.collection("pets").whereEqualTo("ownerId", currentUserId).get().await()
-            if (!petQuery.isEmpty) {
-                val pet = petQuery.documents.first().toObject(Pet::class.java)
-                if (pet != null) {
-                    petName = pet.name
-                    petAnimalType = pet.animalType.ifEmpty { "Perro" }
-                    petBreed = pet.breed
-                    petAge = pet.age
-                    petDescription = pet.shortDescription
-                    if (pet.imageUrls.isNotEmpty()) petImage = pet.imageUrls.first()
+            try {
+                val userDoc = db.collection("users").document(currentUserId).get().await()
+                val user = userDoc.toObject(User::class.java)
+                if (user != null) {
+                    name = user.name
+                    city = user.city.ifEmpty { "Bogotá" }
+                    whatsappNumber = user.whatsappNumber
+                    bio = user.bio
+                    preferenceAnimalType = user.preferenceAnimalType.ifEmpty { "Perro" }
                 }
+
+                // Buscar la primer mascota (MVP)
+                val petQuery = db.collection("pets").whereEqualTo("ownerId", currentUserId).get().await()
+                if (!petQuery.isEmpty) {
+                    val pet = petQuery.documents.first().toObject(Pet::class.java)
+                    if (pet != null) {
+                        petName = pet.name
+                        petAnimalType = pet.animalType.ifEmpty { "Perro" }
+                        petBreed = pet.breed
+                        petAge = pet.age
+                        petDescription = pet.shortDescription
+                        if (pet.imageUrls.isNotEmpty()) petImage = pet.imageUrls.first()
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
         }
     }
@@ -168,25 +187,27 @@ fun ProfileScreen(modifier: Modifier = Modifier) {
                 coroutineScope.launch {
                     isSaving = true
                     try {
-                        // Save User
-                        val user = User(
-                            id = currentUserId, name = name, email = currentUserEmail,
-                            city = city, whatsappNumber = whatsappNumber, bio = bio,
-                            preferenceAnimalType = preferenceAnimalType
-                        )
-                        db.collection("users").document(currentUserId).set(user).await()
+                        // Save User with Timeout to avoid infinite hangs if Firestore is uninitialized
+                        kotlinx.coroutines.withTimeout(8000L) {
+                            val user = User(
+                                id = currentUserId, name = name, email = currentUserEmail,
+                                city = city, whatsappNumber = whatsappNumber, bio = bio,
+                                preferenceAnimalType = preferenceAnimalType
+                            )
+                            db.collection("users").document(currentUserId).set(user).await()
 
-                        // Save Pet (Generamos un ID en base al usuario para el MVP de una sola mascota)
-                        val petId = "${currentUserId}_pet"
-                        val pet = Pet(
-                            id = petId, ownerId = currentUserId, name = petName,
-                            animalType = petAnimalType, breed = petBreed, age = petAge,
-                            city = city, shortDescription = petDescription, 
-                            imageUrls = if (petImage.isNotEmpty()) listOf(petImage) else emptyList()
-                        )
-                        db.collection("pets").document(petId).set(pet).await()
-
+                            val petId = "${currentUserId}_pet"
+                            val pet = Pet(
+                                id = petId, ownerId = currentUserId, name = petName,
+                                animalType = petAnimalType, breed = petBreed, age = petAge,
+                                city = city, shortDescription = petDescription, 
+                                imageUrls = if (petImage.isNotEmpty()) listOf(petImage) else emptyList()
+                            )
+                            db.collection("pets").document(petId).set(pet).await()
+                        }
                         Toast.makeText(context, "Perfil guardado con éxito", Toast.LENGTH_SHORT).show()
+                    } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
+                        Toast.makeText(context, "Error: Revisa que hayas creado Cloud Firestore en tu consola.", Toast.LENGTH_LONG).show()
                     } catch (e: Exception) {
                         Toast.makeText(context, "Error al guardar: ${e.message}", Toast.LENGTH_LONG).show()
                     } finally {
