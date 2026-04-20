@@ -8,28 +8,28 @@ import kotlinx.coroutines.tasks.await
 
 suspend fun seedDatabaseIfEmpty(db: FirebaseFirestore, currentCity: String, currentUserPreference: String) {
     try {
-        val existingPets = db.collection("pets").limit(1).get().await()
-        if (!existingPets.isEmpty) {
-            Log.d("SeedData", "Database is already seeded. Skipping.")
+        val mockValidation = db.collection("pets").document("mock_pet_1").get().await()
+        if (mockValidation.exists()) {
+            Log.d("SeedData", "Database mock already exists. Skipping.")
             return
         }
 
         Log.d("SeedData", "Seeding database with pristine mock data...")
 
         val mockProfiles = listOf(
-            Triple(
+            Pair(
                 User(id = "mock_1", name = "Valeria", city = currentCity, bio = "Amante de los animales y la fotografía.", hobbies = "Fotografía, Senderismo", preferenceAnimalType = "Perro"),
                 Pet(id = "mock_pet_1", ownerId = "mock_1", name = "Zeus", animalType = "Perro", breed = "Golden Retriever", age = "2 años", city = currentCity, shortDescription = "Juguetón, amigable y muy consentido. Adora los parques grandes.", imageUrls = listOf("https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=600&q=80"))
             ),
-            Triple(
+            Pair(
                 User(id = "mock_2", name = "Andrés", city = currentCity, bio = "Siempre buscando aventuras con mi mejor amigo.", hobbies = "Montañismo", preferenceAnimalType = "Perro"),
                 Pet(id = "mock_pet_2", ownerId = "mock_2", name = "Loki", animalType = "Perro", breed = "Husky Siberiano", age = "3 años", city = currentCity, shortDescription = "Muy activo. Busco compañeros para correr por las mañanas.", imageUrls = listOf("https://images.unsplash.com/photo-1605568427561-40dd23c2acea?auto=format&fit=crop&w=600&q=80"))
             ),
-            Triple(
+            Pair(
                 User(id = "mock_3", name = "Camila", city = currentCity, bio = "Mi gato gobierna la casa. Fanática del café.", hobbies = "Lectura, Café", preferenceAnimalType = "Gato"),
                 Pet(id = "mock_pet_3", ownerId = "mock_3", name = "Salem", animalType = "Gato", breed = "Bombay", age = "4 años", city = currentCity, shortDescription = "Domina el techo pero es súper tierno. Busco amiguitos tranquilos.", imageUrls = listOf("https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&w=600&q=80"))
             ),
-            Triple(
+            Pair(
                 User(id = "mock_4", name = "Sebastián", city = currentCity, bio = "Vida saludable. Paseos largos en el parque.", hobbies = "Deportes, Naturaleza", preferenceAnimalType = currentUserPreference),
                 Pet(id = "mock_pet_4", ownerId = "mock_4", name = "Kira", animalType = currentUserPreference, breed = if (currentUserPreference == "Perro") "Beagle" else "Siames", age = "1 año", city = currentCity, shortDescription = "Cachorra curiosa buscando amigos de juegos rápidos.", imageUrls = listOf("https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?auto=format&fit=crop&w=600&q=80"))
             )
