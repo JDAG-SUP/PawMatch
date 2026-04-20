@@ -27,10 +27,13 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.google.firebase.auth.FirebaseAuth
 
+import com.pawmatch.app.ui.theme.LocalThemeManager
+
 @Composable
 fun SettingsScreen(onNavigateToEditProfile: () -> Unit, onNavigateToMatchingPrefs: () -> Unit) {
     val auth = FirebaseAuth.getInstance()
-    var isDarkMode by remember { mutableStateOf(false) } // Fake toggle for UI matching
+    val isDarkThemeState = LocalThemeManager.current
+    var isDarkMode by isDarkThemeState
 
     Column(
         modifier = Modifier
@@ -47,7 +50,7 @@ fun SettingsScreen(onNavigateToEditProfile: () -> Unit, onNavigateToMatchingPref
 
         // Profile Section
         Column(
-            modifier = Modifier.fillMaxWidth().background(Color.White).padding(vertical = 32.dp),
+            modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface).padding(vertical = 32.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Box(contentAlignment = Alignment.BottomEnd) {
@@ -59,7 +62,7 @@ fun SettingsScreen(onNavigateToEditProfile: () -> Unit, onNavigateToMatchingPref
                 )
                 Surface(
                     shape = CircleShape,
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.surface,
                     shadowElevation = 2.dp,
                     modifier = Modifier.padding(4.dp).size(28.dp)
                 ) {
@@ -69,8 +72,8 @@ fun SettingsScreen(onNavigateToEditProfile: () -> Unit, onNavigateToMatchingPref
                 }
             }
             Spacer(modifier = Modifier.height(16.dp))
-            Text("Usuario & Mascota", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
-            Text(auth.currentUser?.email ?: "correo@oculto.com", style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
+            Text("Sofía & Coco", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
+            Text(auth.currentUser?.email ?: "sofia@example.com", style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
             
             Spacer(modifier = Modifier.height(16.dp))
             Button(
@@ -91,7 +94,7 @@ fun SettingsScreen(onNavigateToEditProfile: () -> Unit, onNavigateToMatchingPref
             
             Card(
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 elevation = CardDefaults.cardElevation(0.dp)
             ) {
                 Column {
@@ -109,7 +112,7 @@ fun SettingsScreen(onNavigateToEditProfile: () -> Unit, onNavigateToMatchingPref
             
             Card(
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 elevation = CardDefaults.cardElevation(0.dp)
             ) {
                 Row(
@@ -125,7 +128,7 @@ fun SettingsScreen(onNavigateToEditProfile: () -> Unit, onNavigateToMatchingPref
                     Switch(
                         checked = isDarkMode,
                         onCheckedChange = { isDarkMode = it },
-                        colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = MaterialTheme.colorScheme.primary, uncheckedThumbColor = Color.White, uncheckedTrackColor = Color(0xFFE0E0E0))
+                        colors = SwitchDefaults.colors(checkedThumbColor = MaterialTheme.colorScheme.surface, checkedTrackColor = MaterialTheme.colorScheme.primary, uncheckedThumbColor = MaterialTheme.colorScheme.surface, uncheckedTrackColor = Color(0xFFE0E0E0))
                     )
                 }
             }
@@ -134,7 +137,7 @@ fun SettingsScreen(onNavigateToEditProfile: () -> Unit, onNavigateToMatchingPref
             
             Card(
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 elevation = CardDefaults.cardElevation(0.dp),
                 modifier = Modifier.clickable { auth.signOut() }
             ) {

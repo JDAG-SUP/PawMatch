@@ -59,7 +59,7 @@ fun MatchingPreferencesScreen() {
             Spacer(modifier = Modifier.height(32.dp))
 
             // Breeds
-            Text("Razas de interés (Opcional)", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text("Razas de interés (Opcional)", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
             Spacer(modifier = Modifier.height(12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 BreedTag("Golden Retriever")
@@ -73,7 +73,7 @@ fun MatchingPreferencesScreen() {
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    unfocusedContainerColor = Color.White, focusedContainerColor = Color.White,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surface, focusedContainerColor = MaterialTheme.colorScheme.surface,
                     unfocusedBorderColor = Color(0xFFE0E0E0), focusedBorderColor = MaterialTheme.colorScheme.primary
                 )
             )
@@ -81,11 +81,11 @@ fun MatchingPreferencesScreen() {
             Spacer(modifier = Modifier.height(32.dp))
 
             // Location
-            Text("Ubicación", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text("Ubicación", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
             Spacer(modifier = Modifier.height(12.dp))
             Card(
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE0E0E0)),
                 elevation = CardDefaults.cardElevation(0.dp)
             ) {
@@ -103,7 +103,7 @@ fun MatchingPreferencesScreen() {
                         Switch(
                             checked = locationSwitch,
                             onCheckedChange = { locationSwitch = it },
-                            colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = MaterialTheme.colorScheme.primary)
+                            colors = SwitchDefaults.colors(checkedThumbColor = MaterialTheme.colorScheme.surface, checkedTrackColor = MaterialTheme.colorScheme.primary)
                         )
                     }
                     Divider(color = Color(0xFFE0E0E0))

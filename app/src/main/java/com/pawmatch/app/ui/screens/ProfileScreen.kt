@@ -1,241 +1,196 @@
-/*
- * Copyright 2026 Vincent Tsen
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 package com.pawmatch.app.ui.screens
 
 import android.widget.Toast
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
-import com.pawmatch.app.models.Pet
-import com.pawmatch.app.models.User
-import kotlinx.coroutines.tasks.await
-import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(modifier: Modifier = Modifier) {
     val context = LocalContext.current
-    val coroutineScope = rememberCoroutineScope()
-    val auth = FirebaseAuth.getInstance()
     val db = FirebaseFirestore.getInstance()
+    val auth = FirebaseAuth.getInstance()
+    val currentUser = auth.currentUser
 
-    val currentUserId = auth.currentUser?.uid ?: ""
-    val currentUserEmail = auth.currentUser?.email ?: ""
+    var selectedTabIndex by remember { mutableIntStateOf(0) }
     
-    // User Form State
+    // User fields
     var name by remember { mutableStateOf("") }
-    var city by remember { mutableStateOf("Bogotá") }
-    var whatsappNumber by remember { mutableStateOf("") }
-    var bio by remember { mutableStateOf("") }
-    var preferenceAnimalType by remember { mutableStateOf("Perro") }
+    var age by remember { mutableStateOf("") }
+    var nationality by remember { mutableStateOf("Mexicana") }
+    var civilStatus by remember { mutableStateOf("Soltero/a") }
+    var bio by remember { mutableStateOf("Me encanta la naturaleza y pasar tiempo con mi mascota.") }
+    var hobbyInput by remember { mutableStateOf("") }
+    var hobbies by remember { mutableStateOf(listOf("Senderismo", "Fotografía")) }
 
-    // Pet Form State
-    var petName by remember { mutableStateOf("") }
-    var petBreed by remember { mutableStateOf("") }
-    var petAge by remember { mutableStateOf("") }
-    var petAnimalType by remember { mutableStateOf("Perro") }
-    var petDescription by remember { mutableStateOf("") }
-    var petImage by remember { mutableStateOf("") } // MVP: URL de foto simple
-
-    var isSaving by remember { mutableStateOf(false) }
-
-    // Listas desplegables
-    val cities = listOf("Bogotá", "Medellín", "Cali", "Barranquilla", "Cartagena")
-    var expandedCity by remember { mutableStateOf(false) }
-
-    val animalTypes = listOf("Perro", "Gato", "Ave", "Otro")
-    var expandedPrefAnimal by remember { mutableStateOf(false) }
-    var expandedPetAnimal by remember { mutableStateOf(false) }
-
-    // Cargar perfil existente si lo hay
-    LaunchedEffect(currentUserId) {
-        if (currentUserId.isNotEmpty()) {
-            try {
-                val userDoc = db.collection("users").document(currentUserId).get().await()
-                val user = userDoc.toObject(User::class.java)
-                if (user != null) {
-                    name = user.name
-                    city = user.city.ifEmpty { "Bogotá" }
-                    whatsappNumber = user.whatsappNumber
-                    bio = user.bio
-                    preferenceAnimalType = user.preferenceAnimalType.ifEmpty { "Perro" }
-                }
-
-                // Buscar la primer mascota (MVP)
-                val petQuery = db.collection("pets").whereEqualTo("ownerId", currentUserId).get().await()
-                if (!petQuery.isEmpty) {
-                    val pet = petQuery.documents.first().toObject(Pet::class.java)
-                    if (pet != null) {
-                        petName = pet.name
-                        petAnimalType = pet.animalType.ifEmpty { "Perro" }
-                        petBreed = pet.breed
-                        petAge = pet.age
-                        petDescription = pet.shortDescription
-                        if (pet.imageUrls.isNotEmpty()) petImage = pet.imageUrls.first()
-                    }
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        }
-    }
-
+    // Header & Tabs
     Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(horizontal = 16.dp)
-            .verticalScroll(rememberScrollState()),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .background(MaterialTheme.colorScheme.background)
     ) {
-        Spacer(modifier = Modifier.height(16.dp))
-        Text("Tu Perfil Dueño", style = MaterialTheme.typography.titleLarge)
-        Spacer(modifier = Modifier.height(16.dp))
-
-        OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Nombre") }, modifier = Modifier.fillMaxWidth())
-        Spacer(modifier = Modifier.height(8.dp))
-        OutlinedTextField(value = whatsappNumber, onValueChange = { whatsappNumber = it }, label = { Text("Número WhatsApp") }, modifier = Modifier.fillMaxWidth())
-        Spacer(modifier = Modifier.height(8.dp))
-        OutlinedTextField(value = bio, onValueChange = { bio = it }, label = { Text("Biografía") }, modifier = Modifier.fillMaxWidth())
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Dropdown menu for cities
-        ExposedDropdownMenuBox(expanded = expandedCity, onExpandedChange = { expandedCity = !expandedCity }) {
-            OutlinedTextField(
-                value = city, onValueChange = {}, readOnly = true, label = { Text("Ciudad") },
-                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedCity) },
-                modifier = Modifier.menuAnchor().fillMaxWidth()
-            )
-            ExposedDropdownMenu(expanded = expandedCity, onDismissRequest = { expandedCity = false }) {
-                cities.forEach { selectionOption ->
-                    DropdownMenuItem(text = { Text(selectionOption) }, onClick = { city = selectionOption; expandedCity = false })
-                }
-            }
-        }
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Dropdown Pref Animal
-        ExposedDropdownMenuBox(expanded = expandedPrefAnimal, onExpandedChange = { expandedPrefAnimal = !expandedPrefAnimal }) {
-            OutlinedTextField(
-                value = preferenceAnimalType, onValueChange = {}, readOnly = true, label = { Text("Busco conectar con (Animal)") },
-                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedPrefAnimal) },
-                modifier = Modifier.menuAnchor().fillMaxWidth()
-            )
-            ExposedDropdownMenu(expanded = expandedPrefAnimal, onDismissRequest = { expandedPrefAnimal = false }) {
-                animalTypes.forEach { selectionOption ->
-                    DropdownMenuItem(text = { Text(selectionOption) }, onClick = { preferenceAnimalType = selectionOption; expandedPrefAnimal = false })
-                }
-            }
+        // App Bar
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 20.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(Icons.Default.KeyboardArrowLeft, contentDescription = "Back", tint = MaterialTheme.colorScheme.onBackground)
+            Spacer(modifier = Modifier.width(32.dp))
+            Text("Editar Perfil", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
-        HorizontalDivider()
-        Spacer(modifier = Modifier.height(24.dp))
-
-        Text("Perfil de tu Mascota", style = MaterialTheme.typography.titleLarge)
-        Spacer(modifier = Modifier.height(16.dp))
-
-        OutlinedTextField(value = petName, onValueChange = { petName = it }, label = { Text("Nombre Mascota") }, modifier = Modifier.fillMaxWidth())
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Dropdown Pet Animal
-        ExposedDropdownMenuBox(expanded = expandedPetAnimal, onExpandedChange = { expandedPetAnimal = !expandedPetAnimal }) {
-            OutlinedTextField(
-                value = petAnimalType, onValueChange = {}, readOnly = true, label = { Text("Especie de tu Mascota") },
-                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedPetAnimal) },
-                modifier = Modifier.menuAnchor().fillMaxWidth()
-            )
-            ExposedDropdownMenu(expanded = expandedPetAnimal, onDismissRequest = { expandedPetAnimal = false }) {
-                animalTypes.forEach { selectionOption ->
-                    DropdownMenuItem(text = { Text(selectionOption) }, onClick = { petAnimalType = selectionOption; expandedPetAnimal = false })
-                }
+        TabRow(
+            selectedTabIndex = selectedTabIndex,
+            containerColor = MaterialTheme.colorScheme.background,
+            contentColor = MaterialTheme.colorScheme.onBackground,
+            indicator = { tabPositions ->
+                SecondaryIndicator(
+                    Modifier.tabIndicatorOffset(tabPositions[selectedTabIndex]),
+                    color = MaterialTheme.colorScheme.primary
+                )
             }
+        ) {
+            Tab(selected = selectedTabIndex == 0, onClick = { selectedTabIndex = 0 }, text = { Text("Mi Perfil", color = if (selectedTabIndex == 0) MaterialTheme.colorScheme.primary else Color.Gray) })
+            Tab(selected = selectedTabIndex == 1, onClick = { selectedTabIndex = 1 }, text = { Text("Mi Mascota", color = if (selectedTabIndex == 1) MaterialTheme.colorScheme.primary else Color.Gray) })
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
-        OutlinedTextField(value = petBreed, onValueChange = { petBreed = it }, label = { Text("Raza") }, modifier = Modifier.fillMaxWidth())
-        Spacer(modifier = Modifier.height(8.dp))
-        OutlinedTextField(value = petAge, onValueChange = { petAge = it }, label = { Text("Edad (Ej. 2 años)") }, modifier = Modifier.fillMaxWidth())
-        Spacer(modifier = Modifier.height(8.dp))
-        OutlinedTextField(value = petDescription, onValueChange = { petDescription = it }, label = { Text("Descripción Corta") }, modifier = Modifier.fillMaxWidth())
-        Spacer(modifier = Modifier.height(8.dp))
-        OutlinedTextField(value = petImage, onValueChange = { petImage = it }, label = { Text("URL de Imagen") }, modifier = Modifier.fillMaxWidth())
+        Divider(color = MaterialTheme.colorScheme.onBackground.copy(alpha=0.1f))
 
-        Spacer(modifier = Modifier.height(32.dp))
-        Button(
-            onClick = {
-                coroutineScope.launch {
-                    isSaving = true
-                    try {
-                        // Save User with Timeout to avoid infinite hangs if Firestore is uninitialized
-                        kotlinx.coroutines.withTimeout(8000L) {
-                            val user = User(
-                                id = currentUserId, name = name, email = currentUserEmail,
-                                city = city, whatsappNumber = whatsappNumber, bio = bio,
-                                preferenceAnimalType = preferenceAnimalType
-                            )
-                            db.collection("users").document(currentUserId).set(user).await()
-
-                            val petId = "${currentUserId}_pet"
-                            val pet = Pet(
-                                id = petId, ownerId = currentUserId, name = petName,
-                                animalType = petAnimalType, breed = petBreed, age = petAge,
-                                city = city, shortDescription = petDescription, 
-                                imageUrls = if (petImage.isNotEmpty()) listOf(petImage) else emptyList()
-                            )
-                            db.collection("pets").document(petId).set(pet).await()
+        // Content
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(24.dp)
+                    .padding(bottom = 80.dp) // space for button
+            ) {
+                if (selectedTabIndex == 0) {
+                    
+                    // Avatar logic
+                    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        Box(contentAlignment = Alignment.BottomEnd) {
+                            Surface(
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.surface,
+                                shadowElevation = 1.dp,
+                                modifier = Modifier.size(100.dp).border(1.dp, Color(0xFFE0E0E0), CircleShape)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Text("S", style = MaterialTheme.typography.displayMedium, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.onBackground)
+                                }
+                            }
+                            Box(modifier = Modifier.size(32.dp).offset(x = 4.dp, y = 4.dp).background(MaterialTheme.colorScheme.primary, CircleShape).border(2.dp, MaterialTheme.colorScheme.background, CircleShape), contentAlignment = Alignment.Center) {
+                                Icon(Icons.Default.CameraAlt, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                            }
                         }
-                        Toast.makeText(context, "Perfil guardado con éxito", Toast.LENGTH_SHORT).show()
-                    } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
-                        Toast.makeText(context, "Error: Revisa que hayas creado Cloud Firestore en tu consola.", Toast.LENGTH_LONG).show()
-                    } catch (e: Exception) {
-                        Toast.makeText(context, "Error al guardar: ${e.message}", Toast.LENGTH_LONG).show()
-                    } finally {
-                        isSaving = false
                     }
+                    
+                    Spacer(modifier = Modifier.height(32.dp))
+
+                    Text("Nombre", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = Color.Gray)
+                    OutlinedTextField(value = name, onValueChange = { name = it }, modifier = Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 16.dp), shape = RoundedCornerShape(12.dp), colors = OutlinedTextFieldDefaults.colors(unfocusedContainerColor = MaterialTheme.colorScheme.surface, focusedContainerColor = MaterialTheme.colorScheme.surface, unfocusedBorderColor = Color(0xFFE0E0E0), focusedBorderColor = MaterialTheme.colorScheme.primary))
+
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Edad", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = Color.Gray)
+                            OutlinedTextField(value = age, onValueChange = { age = it }, modifier = Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 16.dp), shape = RoundedCornerShape(12.dp), colors = OutlinedTextFieldDefaults.colors(unfocusedContainerColor = MaterialTheme.colorScheme.surface, focusedContainerColor = MaterialTheme.colorScheme.surface, unfocusedBorderColor = Color(0xFFE0E0E0), focusedBorderColor = MaterialTheme.colorScheme.primary))
+                        }
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Nacionalidad", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = Color.Gray)
+                            OutlinedTextField(value = nationality, onValueChange = { nationality = it }, modifier = Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 16.dp), shape = RoundedCornerShape(12.dp), colors = OutlinedTextFieldDefaults.colors(unfocusedContainerColor = MaterialTheme.colorScheme.surface, focusedContainerColor = MaterialTheme.colorScheme.surface, unfocusedBorderColor = Color(0xFFE0E0E0), focusedBorderColor = MaterialTheme.colorScheme.primary))
+                        }
+                    }
+
+                    Text("Estado Civil", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = Color.Gray)
+                    OutlinedTextField(value = civilStatus, onValueChange = { civilStatus = it }, modifier = Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 16.dp), shape = RoundedCornerShape(12.dp), colors = OutlinedTextFieldDefaults.colors(unfocusedContainerColor = MaterialTheme.colorScheme.surface, focusedContainerColor = MaterialTheme.colorScheme.surface, unfocusedBorderColor = Color(0xFFE0E0E0), focusedBorderColor = MaterialTheme.colorScheme.primary))
+
+                    Text("Descripción personal", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = Color.Gray)
+                    OutlinedTextField(value = bio, onValueChange = { bio = it }, modifier = Modifier.fillMaxWidth().height(120.dp).padding(top = 4.dp, bottom = 16.dp), shape = RoundedCornerShape(12.dp), colors = OutlinedTextFieldDefaults.colors(unfocusedContainerColor = MaterialTheme.colorScheme.surface, focusedContainerColor = MaterialTheme.colorScheme.surface, unfocusedBorderColor = Color(0xFFE0E0E0), focusedBorderColor = MaterialTheme.colorScheme.primary))
+
+                    Text("Hobbies", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = Color.Gray)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    @OptIn(ExperimentalLayoutApi::class)
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        hobbies.forEach { hobby ->
+                            Row(
+                                modifier = Modifier.background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(16.dp)).border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha=0.3f), RoundedCornerShape(16.dp)).padding(horizontal = 16.dp, vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(hobby, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelLarge)
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Icon(Icons.Default.Close, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp).clickable { hobbies = hobbies.filter { it != hobby } })
+                            }
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        OutlinedTextField(
+                            value = hobbyInput,
+                            onValueChange = { hobbyInput = it },
+                            placeholder = { Text("Agregar hobby...") },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = OutlinedTextFieldDefaults.colors(unfocusedContainerColor = MaterialTheme.colorScheme.surface, focusedContainerColor = MaterialTheme.colorScheme.surface, unfocusedBorderColor = Color(0xFFE0E0E0))
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Box(
+                            modifier = Modifier.size(56.dp).background(MaterialTheme.colorScheme.primary, RoundedCornerShape(12.dp)).clickable { 
+                                if (hobbyInput.isNotBlank()) { hobbies = hobbies + hobbyInput; hobbyInput = "" } 
+                            },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = null, tint = Color.White)
+                        }
+                    }
+
+                } else {
+                    // Mascota Tab Placeholder
+                    Text("Detalles de tu mascota. (Añadir aquí campos similares)", style = MaterialTheme.typography.bodyLarge, color = Color.Gray)
                 }
-            },
-            modifier = Modifier.fillMaxWidth(),
-            enabled = !isSaving
-        ) {
-            if (isSaving) {
-                CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
-            } else {
-                Text("Guardar Todo")
+            }
+
+            // Fixed Button at bottom
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.BottomCenter)
+                    .background(MaterialTheme.colorScheme.background)
+                    .padding(16.dp)
+            ) {
+                Button(
+                    onClick = { Toast.makeText(context, "Cambios guardados", Toast.LENGTH_SHORT).show() },
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                ) {
+                    Text("Guardar Cambios", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                }
             }
         }
-        
-        Spacer(modifier = Modifier.height(16.dp))
-        
-        OutlinedButton(
-            onClick = {
-                auth.signOut()
-                // Require app reboot or state handling to show auth screen again
-            },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Cerrar Sesión")
-        }
-        Spacer(modifier = Modifier.height(32.dp))
     }
 }

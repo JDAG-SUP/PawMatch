@@ -28,14 +28,14 @@ val LightSurface = WhiteSurface
 val LightOnBackground = DarkText
 val LightOnSurface = DarkText
 
-// Dark Theme Colors (Optional inversion)
+// Dark Theme Colors
 val DarkPrimary = DeepCoral
 val DarkOnPrimary = WhiteSurface
-val DarkPrimaryContainer = DarkText
+val DarkPrimaryContainer = Color(0xFF2C2C2C)
 val DarkOnPrimaryContainer = CoralAccent
 val DarkSecondary = CoralAccent
-val DarkOnSecondary = DarkText
-val DarkBackground = Color(0xFF1A1A1A)
-val DarkSurface = Color(0xFF262626)
-val DarkOnBackground = CreamBackground
-val DarkOnSurface = CreamBackground
+val DarkOnSecondary = WhiteSurface
+val DarkBackground = Color(0xFF171717)
+val DarkSurface = Color(0xFF222222)
+val DarkOnBackground = Color(0xFFE8E8E8)
+val DarkOnSurface = Color(0xFFE8E8E8)

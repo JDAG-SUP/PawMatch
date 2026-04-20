@@ -27,6 +27,7 @@ import kotlinx.coroutines.launch
 import com.pawmatch.app.ui.screens.MainScreen
 import com.pawmatch.app.ui.screens.AuthScreen
 import com.pawmatch.app.ui.theme.PawMatchTheme
+import com.pawmatch.app.ui.theme.LocalThemeManager
 import androidx.compose.runtime.*
 import com.google.firebase.auth.FirebaseAuth
 
@@ -37,14 +38,17 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         setContent {
-            PawMatchTheme {
-                var isLoggedIn by remember { mutableStateOf(FirebaseAuth.getInstance().currentUser != null) }
+            val isDarkThemeState = remember { mutableStateOf(false) }
 
-                if (isLoggedIn) {
+            CompositionLocalProvider(LocalThemeManager provides isDarkThemeState) {
+                PawMatchTheme(darkTheme = isDarkThemeState.value, dynamicColor = false) {
+                    var isLoggedIn by remember { mutableStateOf(FirebaseAuth.getInstance().currentUser != null) }
+
+                    if (isLoggedIn) {
                     MainScreen()
                 } else {
                     AuthScreen(
-                        onLoginSuccess = { isLoggedIn = true }
+                        onAuthSuccess = { isLoggedIn = true }
                     )
                 }
             }
