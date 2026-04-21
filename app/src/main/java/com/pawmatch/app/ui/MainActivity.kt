@@ -45,11 +45,12 @@ class MainActivity : ComponentActivity() {
                     var isLoggedIn by remember { mutableStateOf(FirebaseAuth.getInstance().currentUser != null) }
 
                     if (isLoggedIn) {
-                    MainScreen()
-                } else {
-                    AuthScreen(
-                        onAuthSuccess = { isLoggedIn = true }
-                    )
+                        MainScreen()
+                    } else {
+                        AuthScreen(
+                            onAuthSuccess = { isLoggedIn = true }
+                        )
+                    }
                 }
             }
         }
