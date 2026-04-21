@@ -105,7 +105,7 @@ fun MainScreen() {
                 EventsScreen()
             }
             composable(BottomNavItem.Chats.screen_route) {
-                // Placeholder Chats
+                ChatsScreen()
             }
             composable(BottomNavItem.Perfil.screen_route) {
                 SettingsScreen(

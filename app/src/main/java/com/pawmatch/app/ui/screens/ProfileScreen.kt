@@ -1,10 +1,16 @@
 package com.pawmatch.app.ui.screens
 
+import android.net.Uri
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -22,13 +28,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun ProfileScreen(modifier: Modifier = Modifier) {
     val context = LocalContext.current
@@ -46,6 +54,33 @@ fun ProfileScreen(modifier: Modifier = Modifier) {
     var bio by remember { mutableStateOf("Me encanta la naturaleza y pasar tiempo con mi mascota.") }
     var hobbyInput by remember { mutableStateOf("") }
     var hobbies by remember { mutableStateOf(listOf("Senderismo", "Fotografía")) }
+
+    // User Images (Max 2)
+    val userImages = remember { mutableStateListOf<Uri>() }
+    val userPhotoPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickMultipleVisualMedia(2)
+    ) { uris ->
+        // Replace existing or up to 2
+        userImages.clear()
+        userImages.addAll(uris)
+    }
+
+    // Pet fields
+    var petName by remember { mutableStateOf("Coco") }
+    var petType by remember { mutableStateOf("Perro") }
+    var petAge by remember { mutableStateOf("4 años") }
+    var petBreed by remember { mutableStateOf("Mestizo") }
+    var petLocation by remember { mutableStateOf("Ciudad de México") }
+    var petDesc by remember { mutableStateOf("") }
+
+    // Pet Images (Min 4, Max 8)
+    val petImages = remember { mutableStateListOf<Uri>() }
+    val petPhotoPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickMultipleVisualMedia(8)
+    ) { uris ->
+        petImages.clear()
+        petImages.addAll(uris)
+    }
 
     // Header & Tabs
     Column(
@@ -91,21 +126,56 @@ fun ProfileScreen(modifier: Modifier = Modifier) {
             ) {
                 if (selectedTabIndex == 0) {
                     
-                    // Avatar logic
-                    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                        Box(contentAlignment = Alignment.BottomEnd) {
-                            Surface(
-                                shape = CircleShape,
-                                color = MaterialTheme.colorScheme.surface,
-                                shadowElevation = 1.dp,
-                                modifier = Modifier.size(100.dp).border(1.dp, Color(0xFFE0E0E0), CircleShape)
+                    // User Image Gallery (Max 2)
+                    Row(
+                        modifier = Modifier.fillMaxWidth().height(160.dp),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        userImages.forEach { uri ->
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight()
+                                    .clip(RoundedCornerShape(16.dp))
                             ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Text("S", style = MaterialTheme.typography.displayMedium, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.onBackground)
+                                AsyncImage(
+                                    model = uri,
+                                    contentDescription = "Foto de usuario",
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .align(Alignment.TopEnd)
+                                        .padding(8.dp)
+                                        .size(24.dp)
+                                        .background(Color(0xE6000000), CircleShape)
+                                        .clickable { userImages.remove(uri) },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(Icons.Default.Close, contentDescription = "Eliminar", tint = Color.White, modifier = Modifier.size(14.dp))
                                 }
                             }
-                            Box(modifier = Modifier.size(32.dp).offset(x = 4.dp, y = 4.dp).background(MaterialTheme.colorScheme.primary, CircleShape).border(2.dp, MaterialTheme.colorScheme.background, CircleShape), contentAlignment = Alignment.Center) {
-                                Icon(Icons.Default.CameraAlt, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                        }
+
+                        // Add Photo Button (only if < 2)
+                        if (userImages.size < 2) {
+                            Box(
+                                modifier = Modifier
+                                    .weight(if (userImages.size == 0) 1f else (1f / (2 - userImages.size)))
+                                    .fillMaxHeight()
+                                    .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(16.dp))
+                                    .border(1.dp, Color.LightGray, RoundedCornerShape(16.dp))
+                                    .clickable {
+                                        userPhotoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Icon(Icons.Default.CameraAlt, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(24.dp))
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text("Añadir foto", style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
+                                }
                             }
                         }
                     }
@@ -135,7 +205,6 @@ fun ProfileScreen(modifier: Modifier = Modifier) {
                     Text("Hobbies", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = Color.Gray)
                     Spacer(modifier = Modifier.height(8.dp))
                     
-                    @OptIn(ExperimentalLayoutApi::class)
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         hobbies.forEach { hobby ->
                             Row(
@@ -171,8 +240,89 @@ fun ProfileScreen(modifier: Modifier = Modifier) {
                     }
 
                 } else {
-                    // Mascota Tab Placeholder
-                    Text("Detalles de tu mascota. (Añadir aquí campos similares)", style = MaterialTheme.typography.bodyLarge, color = Color.Gray)
+                    
+                    // Galería de fotos (Mascota - Max 8)
+                    LazyRow(
+                        modifier = Modifier.fillMaxWidth().height(160.dp),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        // Fotos seleccionadas
+                        items(petImages) { uri ->
+                            Box(
+                                modifier = Modifier
+                                    .width(140.dp)
+                                    .fillMaxHeight()
+                                    .clip(RoundedCornerShape(16.dp))
+                            ) {
+                                AsyncImage(
+                                    model = uri,
+                                    contentDescription = "Foto de mascota",
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                                // Botón de eliminar (X)
+                                Box(
+                                    modifier = Modifier
+                                        .align(Alignment.TopEnd)
+                                        .padding(8.dp)
+                                        .size(24.dp)
+                                        .background(Color(0xE6000000), CircleShape)
+                                        .clickable { petImages.remove(uri) },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(Icons.Default.Close, contentDescription = "Eliminar", tint = Color.White, modifier = Modifier.size(14.dp))
+                                }
+                            }
+                        }
+
+                        // Añadir foto (solo si son menos de 8)
+                        if (petImages.size < 8) {
+                            item {
+                                Box(
+                                    modifier = Modifier
+                                        .width(140.dp)
+                                        .fillMaxHeight()
+                                        .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(16.dp))
+                                        .border(1.dp, Color.LightGray, RoundedCornerShape(16.dp))
+                                        .clickable {
+                                            petPhotoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                                        },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Icon(Icons.Default.CameraAlt, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(24.dp))
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Text("Añadir foto", style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    Text("Nombre de la mascota", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = Color.Gray)
+                    OutlinedTextField(value = petName, onValueChange = { petName = it }, modifier = Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 16.dp), shape = RoundedCornerShape(12.dp), colors = OutlinedTextFieldDefaults.colors(unfocusedContainerColor = MaterialTheme.colorScheme.surface, focusedContainerColor = MaterialTheme.colorScheme.surface, unfocusedBorderColor = Color(0xFFE0E0E0), focusedBorderColor = MaterialTheme.colorScheme.primary))
+
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Tipo de animal", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = Color.Gray)
+                            OutlinedTextField(value = petType, onValueChange = { petType = it }, modifier = Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 16.dp), shape = RoundedCornerShape(12.dp), colors = OutlinedTextFieldDefaults.colors(unfocusedContainerColor = MaterialTheme.colorScheme.surface, focusedContainerColor = MaterialTheme.colorScheme.surface, unfocusedBorderColor = Color(0xFFE0E0E0), focusedBorderColor = MaterialTheme.colorScheme.primary))
+                        }
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Edad", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = Color.Gray)
+                            OutlinedTextField(value = petAge, onValueChange = { petAge = it }, modifier = Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 16.dp), shape = RoundedCornerShape(12.dp), colors = OutlinedTextFieldDefaults.colors(unfocusedContainerColor = MaterialTheme.colorScheme.surface, focusedContainerColor = MaterialTheme.colorScheme.surface, unfocusedBorderColor = Color(0xFFE0E0E0), focusedBorderColor = MaterialTheme.colorScheme.primary))
+                        }
+                    }
+
+                    Text("Raza", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = Color.Gray)
+                    OutlinedTextField(value = petBreed, onValueChange = { petBreed = it }, modifier = Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 16.dp), shape = RoundedCornerShape(12.dp), colors = OutlinedTextFieldDefaults.colors(unfocusedContainerColor = MaterialTheme.colorScheme.surface, focusedContainerColor = MaterialTheme.colorScheme.surface, unfocusedBorderColor = Color(0xFFE0E0E0), focusedBorderColor = MaterialTheme.colorScheme.primary))
+
+                    Text("Ubicación", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = Color.Gray)
+                    OutlinedTextField(value = petLocation, onValueChange = { petLocation = it }, modifier = Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 16.dp), shape = RoundedCornerShape(12.dp), colors = OutlinedTextFieldDefaults.colors(unfocusedContainerColor = MaterialTheme.colorScheme.surface, focusedContainerColor = MaterialTheme.colorScheme.surface, unfocusedBorderColor = Color(0xFFE0E0E0), focusedBorderColor = MaterialTheme.colorScheme.primary))
+
+                    Text("Descripción", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = Color.Gray)
+                    OutlinedTextField(value = petDesc, onValueChange = { petDesc = it }, modifier = Modifier.fillMaxWidth().height(120.dp).padding(top = 4.dp, bottom = 16.dp), shape = RoundedCornerShape(12.dp), colors = OutlinedTextFieldDefaults.colors(unfocusedContainerColor = MaterialTheme.colorScheme.surface, focusedContainerColor = MaterialTheme.colorScheme.surface, unfocusedBorderColor = Color(0xFFE0E0E0), focusedBorderColor = MaterialTheme.colorScheme.primary))
                 }
             }
 
@@ -185,7 +335,13 @@ fun ProfileScreen(modifier: Modifier = Modifier) {
                     .padding(16.dp)
             ) {
                 Button(
-                    onClick = { Toast.makeText(context, "Cambios guardados", Toast.LENGTH_SHORT).show() },
+                    onClick = { 
+                        if (petImages.size < 4) {
+                            Toast.makeText(context, "Debes subir al menos 4 fotos de tu mascota.", Toast.LENGTH_LONG).show()
+                        } else {
+                            Toast.makeText(context, "Fotos locales configuradas. Guardado exitoso.", Toast.LENGTH_SHORT).show()
+                        }
+                    },
                     modifier = Modifier.fillMaxWidth().height(56.dp),
                     shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
