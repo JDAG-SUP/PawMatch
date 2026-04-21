@@ -400,8 +400,13 @@ fun ProfileScreen(modifier: Modifier = Modifier) {
                                     for (uri in userImages) {
                                         if (uri.scheme == "content" || uri.scheme == "file") {
                                             val ref = storage.reference.child("profile_images/${uid}/user_${UUID.randomUUID()}.jpg")
-                                            ref.putFile(uri).await()
-                                            finalUserImages.add(ref.downloadUrl.await().toString())
+                                            val downloadUrl = ref.putFile(uri).continueWithTask { task ->
+                                                if (!task.isSuccessful) {
+                                                    task.exception?.let { throw it }
+                                                }
+                                                ref.downloadUrl
+                                            }.await().toString()
+                                            finalUserImages.add(downloadUrl)
                                         } else {
                                             finalUserImages.add(uri.toString())
                                         }
@@ -411,8 +416,13 @@ fun ProfileScreen(modifier: Modifier = Modifier) {
                                     for (uri in petImages) {
                                         if (uri.scheme == "content" || uri.scheme == "file") {
                                             val ref = storage.reference.child("profile_images/${uid}/pet_${UUID.randomUUID()}.jpg")
-                                            ref.putFile(uri).await()
-                                            finalPetImages.add(ref.downloadUrl.await().toString())
+                                            val downloadUrl = ref.putFile(uri).continueWithTask { task ->
+                                                if (!task.isSuccessful) {
+                                                    task.exception?.let { throw it }
+                                                }
+                                                ref.downloadUrl
+                                            }.await().toString()
+                                            finalPetImages.add(downloadUrl)
                                         } else {
                                             finalPetImages.add(uri.toString())
                                         }
