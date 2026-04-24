@@ -24,6 +24,7 @@ import androidx.compose.material3.*
 import androidx.compose.material3.TabRowDefaults.SecondaryIndicator
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -50,82 +51,87 @@ fun ProfileScreen(modifier: Modifier = Modifier) {
     val currentUser = auth.currentUser
     val scope = rememberCoroutineScope()
 
-    var selectedTabIndex by remember { mutableIntStateOf(0) }
-    var isSaving by remember { mutableStateOf(false) }
-    var isLoading by remember { mutableStateOf(true) }
+    var selectedTabIndex by rememberSaveable { mutableIntStateOf(0) }
+    var isSaving by rememberSaveable { mutableStateOf(false) }
+    var isLoading by rememberSaveable { mutableStateOf(true) }
+    var hasFetched by rememberSaveable { mutableStateOf(false) }
     
-    // User fields
-    var name by remember { mutableStateOf("") }
-    var age by remember { mutableStateOf("") }
-    var nationality by remember { mutableStateOf("Mexicana") }
-    var civilStatus by remember { mutableStateOf("Soltero/a") }
-    var bio by remember { mutableStateOf("Me encanta la naturaleza y pasar tiempo con mi mascota.") }
-    var hobbyInput by remember { mutableStateOf("") }
-    var hobbies by remember { mutableStateOf(listOf("Senderismo", "Fotografía")) }
+    // User fields (Empty defaults)
+    var name by rememberSaveable { mutableStateOf("") }
+    var age by rememberSaveable { mutableStateOf("") }
+    var nationality by rememberSaveable { mutableStateOf("") }
+    var civilStatus by rememberSaveable { mutableStateOf("") }
+    var bio by rememberSaveable { mutableStateOf("") }
+    var hobbyInput by rememberSaveable { mutableStateOf("") }
+    
+    // Hobbies List needs to be converted to saveable effectively
+    var savedHobbies by rememberSaveable { mutableStateOf(listOf<String>()) }
 
     // User Images
-    val userImages = remember { mutableStateListOf<Uri>() }
+    val userImagesStrings = rememberSaveable { mutableStateListOf<String>() }
     val userPhotoPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickMultipleVisualMedia(2)
     ) { uris ->
-        userImages.clear()
-        userImages.addAll(uris)
+        userImagesStrings.clear()
+        userImagesStrings.addAll(uris.map { it.toString() })
     }
 
-    // Pet fields
-    var petName by remember { mutableStateOf("") }
-    var petType by remember { mutableStateOf("Perro") }
-    var petAge by remember { mutableStateOf("4 años") }
-    var petBreed by remember { mutableStateOf("Mestizo") }
-    var petLocation by remember { mutableStateOf("Ciudad de México") }
-    var petDesc by remember { mutableStateOf("") }
+    // Pet fields (Empty defaults)
+    var petName by rememberSaveable { mutableStateOf("") }
+    var petType by rememberSaveable { mutableStateOf("") }
+    var petAge by rememberSaveable { mutableStateOf("") }
+    var petBreed by rememberSaveable { mutableStateOf("") }
+    var petLocation by rememberSaveable { mutableStateOf("") }
+    var petDesc by rememberSaveable { mutableStateOf("") }
 
     // Pet Images
-    val petImages = remember { mutableStateListOf<Uri>() }
+    val petImagesStrings = rememberSaveable { mutableStateListOf<String>() }
     val petPhotoPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickMultipleVisualMedia(8)
     ) { uris ->
-        petImages.clear()
-        petImages.addAll(uris)
+        petImagesStrings.clear()
+        petImagesStrings.addAll(uris.map { it.toString() })
     }
 
-    // Fetch initial Profile data
+    // Fetch initial Profile data only ONCE
     LaunchedEffect(currentUser?.uid) {
-        currentUser?.uid?.let { uid ->
+        if (!hasFetched && currentUser?.uid != null) {
+            val uid = currentUser.uid
             try {
                 val doc = db.collection("users").document(uid).get().await()
                 if (doc.exists()) {
                     name = doc.getString("name") ?: ""
                     age = doc.getString("age") ?: ""
-                    nationality = doc.getString("nationality") ?: "Mexicana"
-                    civilStatus = doc.getString("civilStatus") ?: "Soltero/a"
+                    nationality = doc.getString("nationality") ?: ""
+                    civilStatus = doc.getString("civilStatus") ?: ""
                     bio = doc.getString("bio") ?: ""
                     
                     val fetchedHobbies = doc.get("hobbies") as? List<String>
                     if (fetchedHobbies != null) {
-                        hobbies = fetchedHobbies
+                        savedHobbies = fetchedHobbies
                     }
 
                     petName = doc.getString("petName") ?: ""
-                    petType = doc.getString("petType") ?: "Perro"
-                    petAge = doc.getString("petAge") ?: "4 años"
-                    petBreed = doc.getString("petBreed") ?: "Mestizo"
-                    petLocation = doc.getString("petLocation") ?: "Ciudad de México"
+                    petType = doc.getString("petType") ?: ""
+                    petAge = doc.getString("petAge") ?: ""
+                    petBreed = doc.getString("petBreed") ?: ""
+                    petLocation = doc.getString("petLocation") ?: ""
                     petDesc = doc.getString("petDesc") ?: ""
 
                     val fetchedUserImages = doc.get("userImages") as? List<String>
                     if (fetchedUserImages != null) {
-                        userImages.addAll(fetchedUserImages.map { Uri.parse(it) })
+                        userImagesStrings.addAll(fetchedUserImages)
                     }
 
                     val fetchedPetImages = doc.get("petImages") as? List<String>
                     if (fetchedPetImages != null) {
-                        petImages.addAll(fetchedPetImages.map { Uri.parse(it) })
+                        petImagesStrings.addAll(fetchedPetImages)
                     }
                 }
             } catch (e: Exception) {
                 // Ignore load errors for now
             }
+            hasFetched = true
         }
         isLoading = false
     }
@@ -184,7 +190,7 @@ fun ProfileScreen(modifier: Modifier = Modifier) {
                             modifier = Modifier.fillMaxWidth().height(160.dp),
                             horizontalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
-                            userImages.forEach { uri ->
+                            userImagesStrings.forEach { uriString ->
                                 Box(
                                     modifier = Modifier
                                         .weight(1f)
@@ -192,7 +198,7 @@ fun ProfileScreen(modifier: Modifier = Modifier) {
                                         .clip(RoundedCornerShape(16.dp))
                                 ) {
                                     AsyncImage(
-                                        model = uri,
+                                        model = Uri.parse(uriString),
                                         contentDescription = "Foto de usuario",
                                         contentScale = ContentScale.Crop,
                                         modifier = Modifier.fillMaxSize()
@@ -203,7 +209,7 @@ fun ProfileScreen(modifier: Modifier = Modifier) {
                                             .padding(8.dp)
                                             .size(24.dp)
                                             .background(Color(0xE6000000), CircleShape)
-                                            .clickable { userImages.remove(uri) },
+                                            .clickable { userImagesStrings.remove(uriString) },
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Icon(Icons.Default.Close, contentDescription = "Eliminar", tint = Color.White, modifier = Modifier.size(14.dp))
@@ -212,10 +218,10 @@ fun ProfileScreen(modifier: Modifier = Modifier) {
                             }
 
                             // Add Photo Button (only if < 2)
-                            if (userImages.size < 2) {
+                            if (userImagesStrings.size < 2) {
                                 Box(
                                     modifier = Modifier
-                                        .weight(if (userImages.size == 0) 1f else (1f / (2 - userImages.size)))
+                                        .weight(if (userImagesStrings.size == 0) 1f else (1f / (2 - userImagesStrings.size)))
                                         .fillMaxHeight()
                                         .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(16.dp))
                                         .border(1.dp, Color.LightGray, RoundedCornerShape(16.dp))
@@ -259,14 +265,14 @@ fun ProfileScreen(modifier: Modifier = Modifier) {
                         Spacer(modifier = Modifier.height(8.dp))
                         
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            hobbies.forEach { hobby ->
+                            savedHobbies.forEach { hobby ->
                                 Row(
                                     modifier = Modifier.background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(16.dp)).border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha=0.3f), RoundedCornerShape(16.dp)).padding(horizontal = 16.dp, vertical = 6.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Text(hobby, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelLarge)
                                     Spacer(modifier = Modifier.width(6.dp))
-                                    Icon(Icons.Default.Close, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp).clickable { hobbies = hobbies.filter { it != hobby } })
+                                    Icon(Icons.Default.Close, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp).clickable { savedHobbies = savedHobbies.filter { it != hobby } })
                                 }
                             }
                         }
@@ -284,7 +290,7 @@ fun ProfileScreen(modifier: Modifier = Modifier) {
                             Spacer(modifier = Modifier.width(12.dp))
                             Box(
                                 modifier = Modifier.size(56.dp).background(MaterialTheme.colorScheme.primary, RoundedCornerShape(12.dp)).clickable { 
-                                    if (hobbyInput.isNotBlank()) { hobbies = hobbies + hobbyInput; hobbyInput = "" } 
+                                    if (hobbyInput.isNotBlank()) { savedHobbies = savedHobbies + hobbyInput; hobbyInput = "" } 
                                 },
                                 contentAlignment = Alignment.Center
                             ) {
@@ -299,7 +305,7 @@ fun ProfileScreen(modifier: Modifier = Modifier) {
                             modifier = Modifier.fillMaxWidth().height(160.dp),
                             horizontalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
-                            items(petImages) { uri ->
+                            items(petImagesStrings) { uriString ->
                                 Box(
                                     modifier = Modifier
                                         .width(140.dp)
@@ -307,7 +313,7 @@ fun ProfileScreen(modifier: Modifier = Modifier) {
                                         .clip(RoundedCornerShape(16.dp))
                                 ) {
                                     AsyncImage(
-                                        model = uri,
+                                        model = Uri.parse(uriString),
                                         contentDescription = "Foto de mascota",
                                         contentScale = ContentScale.Crop,
                                         modifier = Modifier.fillMaxSize()
@@ -318,7 +324,7 @@ fun ProfileScreen(modifier: Modifier = Modifier) {
                                             .padding(8.dp)
                                             .size(24.dp)
                                             .background(Color(0xE6000000), CircleShape)
-                                            .clickable { petImages.remove(uri) },
+                                            .clickable { petImagesStrings.remove(uriString) },
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Icon(Icons.Default.Close, contentDescription = "Eliminar", tint = Color.White, modifier = Modifier.size(14.dp))
@@ -326,7 +332,7 @@ fun ProfileScreen(modifier: Modifier = Modifier) {
                                 }
                             }
 
-                            if (petImages.size < 8) {
+                            if (petImagesStrings.size < 8) {
                                 item {
                                     Box(
                                         modifier = Modifier
@@ -386,7 +392,7 @@ fun ProfileScreen(modifier: Modifier = Modifier) {
                 ) {
                     Button(
                         onClick = { 
-                            if (petImages.size < 4) {
+                            if (petImagesStrings.size < 4) {
                                 Toast.makeText(context, "Debes subir al menos 4 fotos de tu mascota.", Toast.LENGTH_LONG).show()
                                 return@Button
                             }
@@ -397,34 +403,66 @@ fun ProfileScreen(modifier: Modifier = Modifier) {
                             scope.launch {
                                 try {
                                     val finalUserImages = mutableListOf<String>()
-                                    for (uri in userImages) {
-                                        if (uri.scheme == "content" || uri.scheme == "file") {
+                                    for (uriString in userImagesStrings) {
+                                        val parseUri = Uri.parse(uriString)
+                                        if (parseUri.scheme == "content" || parseUri.scheme == "file") {
                                             val ref = storage.reference.child("profile_images/${uid}/user_${UUID.randomUUID()}.jpg")
-                                            val downloadUrl = ref.putFile(uri).continueWithTask { task ->
-                                                if (!task.isSuccessful) {
-                                                    task.exception?.let { throw it }
+                                            
+                                            try {
+                                                ref.putFile(parseUri).await()
+                                            } catch (e: Exception) {
+                                                throw Exception("Storage Upload Falló (Usuario): ${e.message}")
+                                            }
+
+                                            var downloadUrl = ""
+                                            var retries = 0
+                                            while (downloadUrl.isEmpty() && retries < 3) {
+                                                try {
+                                                    downloadUrl = ref.downloadUrl.await().toString()
+                                                } catch (e: Exception) {
+                                                    retries++
+                                                    if (retries >= 3) {
+                                                        throw Exception("Storage Falla de lectura (Usuario): ${e.message}")
+                                                    }
+                                                    kotlinx.coroutines.delay(1000)
                                                 }
-                                                ref.downloadUrl
-                                            }.await().toString()
+                                            }
                                             finalUserImages.add(downloadUrl)
+                                            
                                         } else {
-                                            finalUserImages.add(uri.toString())
+                                            finalUserImages.add(uriString)
                                         }
                                     }
 
                                     val finalPetImages = mutableListOf<String>()
-                                    for (uri in petImages) {
-                                        if (uri.scheme == "content" || uri.scheme == "file") {
+                                    for (uriString in petImagesStrings) {
+                                        val parseUri = Uri.parse(uriString)
+                                        if (parseUri.scheme == "content" || parseUri.scheme == "file") {
                                             val ref = storage.reference.child("profile_images/${uid}/pet_${UUID.randomUUID()}.jpg")
-                                            val downloadUrl = ref.putFile(uri).continueWithTask { task ->
-                                                if (!task.isSuccessful) {
-                                                    task.exception?.let { throw it }
+                                            
+                                            try {
+                                                ref.putFile(parseUri).await()
+                                            } catch (e: Exception) {
+                                                throw Exception("Storage Upload Falló (Mascota): ${e.message}")
+                                            }
+
+                                            var downloadUrl = ""
+                                            var retries = 0
+                                            while (downloadUrl.isEmpty() && retries < 3) {
+                                                try {
+                                                    downloadUrl = ref.downloadUrl.await().toString()
+                                                } catch (e: Exception) {
+                                                    retries++
+                                                    if (retries >= 3) {
+                                                        throw Exception("Storage Falla de lectura (Mascota): ${e.message}")
+                                                    }
+                                                    kotlinx.coroutines.delay(1000)
                                                 }
-                                                ref.downloadUrl
-                                            }.await().toString()
+                                            }
                                             finalPetImages.add(downloadUrl)
+                                            
                                         } else {
-                                            finalPetImages.add(uri.toString())
+                                            finalPetImages.add(uriString)
                                         }
                                     }
 
@@ -434,7 +472,7 @@ fun ProfileScreen(modifier: Modifier = Modifier) {
                                         "nationality" to nationality,
                                         "civilStatus" to civilStatus,
                                         "bio" to bio,
-                                        "hobbies" to hobbies,
+                                        "hobbies" to savedHobbies,
                                         "userImages" to finalUserImages,
                                         "petName" to petName,
                                         "petType" to petType,
@@ -446,6 +484,13 @@ fun ProfileScreen(modifier: Modifier = Modifier) {
                                     )
 
                                     db.collection("users").document(uid).set(userProfile).await()
+                                    
+                                    // Update local lists to have fresh HTTP URIs
+                                    userImagesStrings.clear()
+                                    userImagesStrings.addAll(finalUserImages)
+                                    petImagesStrings.clear()
+                                    petImagesStrings.addAll(finalPetImages)
+
                                     Toast.makeText(context, "Datos guardados en la nube exitosamente", Toast.LENGTH_SHORT).show()
                                 } catch (e: Exception) {
                                     Toast.makeText(context, "Error al guardar: ${e.message}", Toast.LENGTH_LONG).show()
