@@ -52,23 +52,22 @@ fun SettingsScreen(
         val userListener = db.collection("users").document(currentUid).addSnapshotListener { snapshot, _ ->
             if (snapshot != null && snapshot.exists()) {
                 userName = snapshot.getString("name")?.takeIf { it.isNotBlank() } ?: "Usuario"
-            }
-        }
-        
-        val petListener = db.collection("pets").whereEqualTo("ownerId", currentUid).addSnapshotListener { snapshot, _ ->
-            if (snapshot != null && !snapshot.isEmpty) {
-                val petDoc = snapshot.documents.first()
-                petName = petDoc.getString("name")?.takeIf { it.isNotBlank() } ?: "Mascota"
-                val urls = petDoc.get("imageUrls") as? List<*>
-                if (urls != null && urls.isNotEmpty()) {
-                    profileImageUrl = urls[0] as? String
+                petName = snapshot.getString("petName")?.takeIf { it.isNotBlank() } ?: "Mascota"
+                
+                val petUrls = snapshot.get("petImages") as? List<*>
+                if (petUrls != null && petUrls.isNotEmpty()) {
+                    profileImageUrl = petUrls[0] as? String
+                } else {
+                    val userUrls = snapshot.get("userImages") as? List<*>
+                    if (userUrls != null && userUrls.isNotEmpty()) {
+                        profileImageUrl = userUrls[0] as? String
+                    }
                 }
             }
         }
         
         onDispose {
             userListener.remove()
-            petListener.remove()
         }
     }
 
