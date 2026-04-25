@@ -1,7 +1,11 @@
 package com.pawmatch.app.ui.screens
 
+import android.net.Uri
 import android.util.Log
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -11,12 +15,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -25,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import java.util.UUID
@@ -50,7 +58,16 @@ fun EventsScreen() {
 
     var eventsList by remember { mutableStateOf<List<CommunityEvent>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
-    var showCreateDialog by remember { mutableStateOf(false) }
+    var showEventDialog by remember { mutableStateOf(false) }
+    var editingEvent by remember { mutableStateOf<CommunityEvent?>(null) }
+    
+    var imageUri by remember { mutableStateOf<Uri?>(null) }
+
+    val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri != null) {
+            imageUri = uri
+        }
+    }
 
     fun loadEvents() {
         coroutineScope.launch {
@@ -85,7 +102,11 @@ fun EventsScreen() {
                 shape = RoundedCornerShape(12.dp),
                 color = MaterialTheme.colorScheme.surface,
                 shadowElevation = 2.dp,
-                modifier = Modifier.size(40.dp).clickable { showCreateDialog = true }
+                modifier = Modifier.size(40.dp).clickable { 
+                    editingEvent = null
+                    imageUri = null
+                    showEventDialog = true 
+                }
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Text("+", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onBackground)
@@ -113,6 +134,11 @@ fun EventsScreen() {
                     EventCard(
                         event = event,
                         isOwner = event.creatorId == currentUserId,
+                        onEdit = {
+                            editingEvent = event
+                            imageUri = null
+                            showEventDialog = true
+                        },
                         onDelete = {
                             coroutineScope.launch {
                                 try {
@@ -130,15 +156,23 @@ fun EventsScreen() {
         }
     }
 
-    if (showCreateDialog) {
-        var title by remember { mutableStateOf("") }
-        var date by remember { mutableStateOf("") }
-        var location by remember { mutableStateOf("") }
-        var maxAttendees by remember { mutableStateOf("") }
+    if (showEventDialog) {
+        var title by remember { mutableStateOf(editingEvent?.title ?: "") }
+        var date by remember { mutableStateOf(editingEvent?.date ?: "") }
+        var location by remember { mutableStateOf(editingEvent?.location ?: "") }
+        var maxAttendees by remember { mutableStateOf(if (editingEvent != null) editingEvent!!.maxAttendees.toString() else "") }
+        var isSaving by remember { mutableStateOf(false) }
+
+        val isEditMode = editingEvent != null
 
         AlertDialog(
-            onDismissRequest = { showCreateDialog = false },
-            title = { Text("Crear Evento", fontWeight = FontWeight.Bold) },
+            onDismissRequest = { 
+                if (!isSaving) {
+                    showEventDialog = false 
+                    editingEvent = null
+                }
+            },
+            title = { Text(if (isEditMode) "Editar Evento" else "Crear Evento", fontWeight = FontWeight.Bold) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Título del evento")
@@ -149,39 +183,75 @@ fun EventsScreen() {
                     OutlinedTextField(value = location, onValueChange = { location = it }, placeholder = { Text("Ej: Parque México") }, singleLine = true)
                     Text("Límite de asistentes")
                     OutlinedTextField(value = maxAttendees, onValueChange = { maxAttendees = it }, placeholder = { Text("Ej: 30") }, singleLine = true)
+                    
+                    Spacer(Modifier.height(8.dp))
+                    Button(
+                        onClick = { photoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondaryContainer, contentColor = MaterialTheme.colorScheme.onSecondaryContainer),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.Image, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(if (imageUri != null) "Imagen seleccionada ✔️" else if(isEditMode) "Cambiar Imagen de Portada" else "Añadir Imagen de Portada")
+                    }
                 }
             },
             confirmButton = {
-                Button(onClick = {
-                    if (title.isNotBlank() && date.isNotBlank() && location.isNotBlank() && maxAttendees.isNotBlank()) {
-                        coroutineScope.launch {
-                            try {
-                                val eventId = UUID.randomUUID().toString()
-                                val newEvent = CommunityEvent(
-                                    id = eventId,
-                                    creatorId = currentUserId,
-                                    title = title,
-                                    date = date,
-                                    location = location,
-                                    maxAttendees = maxAttendees.toIntOrNull() ?: 20,
-                                    currentAttendees = 1 // Start with the creator
-                                )
-                                db.collection("events").document(eventId).set(newEvent).await()
-                                Toast.makeText(context, "Evento publicado", Toast.LENGTH_SHORT).show()
-                                showCreateDialog = false
-                                loadEvents()
-                            } catch (e: Exception) {
-                                Toast.makeText(context, "Error al crear", Toast.LENGTH_SHORT).show()
+                Button(
+                    onClick = {
+                        if (title.isNotBlank() && date.isNotBlank() && location.isNotBlank() && maxAttendees.isNotBlank()) {
+                            coroutineScope.launch {
+                                isSaving = true
+                                try {
+                                    val eventId = editingEvent?.id ?: UUID.randomUUID().toString()
+                                    var finalImageUrl = editingEvent?.imageUrl ?: "https://images.unsplash.com/photo-1544568100-847a948585b9?auto=format&fit=crop&w=600&q=80"
+                                    
+                                    if (imageUri != null) {
+                                        Toast.makeText(context, "Subiendo portada...", Toast.LENGTH_SHORT).show()
+                                        val storageRef = FirebaseStorage.getInstance().reference.child("event_images/${eventId}_${System.currentTimeMillis()}.jpg")
+                                        storageRef.putFile(imageUri!!).await()
+                                        finalImageUrl = storageRef.downloadUrl.await().toString()
+                                    }
+
+                                    val eventInfo = CommunityEvent(
+                                        id = eventId,
+                                        creatorId = currentUserId,
+                                        title = title,
+                                        date = date,
+                                        location = location,
+                                        maxAttendees = maxAttendees.toIntOrNull() ?: 20,
+                                        currentAttendees = editingEvent?.currentAttendees ?: 1,
+                                        imageUrl = finalImageUrl
+                                    )
+                                    db.collection("events").document(eventId).set(eventInfo).await()
+                                    Toast.makeText(context, if(isEditMode) "Evento actualizado" else "Evento publicado", Toast.LENGTH_SHORT).show()
+                                    
+                                    showEventDialog = false
+                                    editingEvent = null
+                                    imageUri = null
+                                    loadEvents()
+                                } catch (e: Exception) {
+                                    Toast.makeText(context, "Error al guardar", Toast.LENGTH_SHORT).show()
+                                } finally {
+                                    isSaving = false
+                                }
                             }
                         }
+                    },
+                    enabled = !isSaving
+                ) {
+                    if (isSaving) {
+                        CircularProgressIndicator(modifier=Modifier.size(20.dp), strokeWidth = 2.dp)
+                    } else {
+                        Text(if(isEditMode) "Actualizar" else "Publicar")
                     }
-                }) {
-                    Text("Publicar")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showCreateDialog = false }) {
-                    Text("Cancelar")
+                if (!isSaving) {
+                    TextButton(onClick = { showEventDialog = false; editingEvent = null }) {
+                        Text("Cancelar")
+                    }
                 }
             }
         )
@@ -189,7 +259,7 @@ fun EventsScreen() {
 }
 
 @Composable
-fun EventCard(event: CommunityEvent, isOwner: Boolean, onDelete: () -> Unit) {
+fun EventCard(event: CommunityEvent, isOwner: Boolean, onEdit: () -> Unit, onDelete: () -> Unit) {
     val isFull = event.currentAttendees >= event.maxAttendees
 
     Card(
@@ -223,18 +293,26 @@ fun EventCard(event: CommunityEvent, isOwner: Boolean, onDelete: () -> Unit) {
                 }
                 
                 if (isOwner) {
-                     Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = MaterialTheme.colorScheme.errorContainer,
-                        modifier = Modifier
-                            .align(Alignment.BottomEnd)
-                            .padding(16.dp)
-                            .clickable { onDelete() }
-                    ) {
-                        Box(modifier = Modifier.padding(8.dp)) {
-                            Icon(Icons.Default.Delete, contentDescription = "Borrar Evento", tint = MaterialTheme.colorScheme.error)
+                     Row(modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp)) {
+                         Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            modifier = Modifier.padding(end=8.dp).clickable { onEdit() }
+                        ) {
+                            Box(modifier = Modifier.padding(8.dp)) {
+                                Icon(Icons.Default.Edit, contentDescription = "Editar Evento", tint = MaterialTheme.colorScheme.primary)
+                            }
                         }
-                    }
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.errorContainer,
+                            modifier = Modifier.clickable { onDelete() }
+                        ) {
+                            Box(modifier = Modifier.padding(8.dp)) {
+                                Icon(Icons.Default.Delete, contentDescription = "Borrar Evento", tint = MaterialTheme.colorScheme.error)
+                            }
+                        }
+                     }
                 }
             }
             Column(modifier = Modifier.padding(20.dp)) {

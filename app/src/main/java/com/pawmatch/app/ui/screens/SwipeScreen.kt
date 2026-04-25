@@ -88,14 +88,15 @@ fun SwipeScreen(modifier: Modifier = Modifier, onNavigateToFilters: () -> Unit =
                         pet.ownerId != currentUserId && petAge in minAge..maxAge
                     }
                 }
-            } catch (e: Exception) {
-                Log.e("SwipeScreen", "Error loading data", e)
-            } finally {
-                isLoading = false
             }
-        } else {
+        } catch (e: Exception) {
+            Log.e("SwipeScreen", "Error loading data", e)
+        } finally {
             isLoading = false
         }
+    } else {
+        isLoading = false
+    }
     }
 
     Scaffold(
