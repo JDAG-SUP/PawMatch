@@ -154,12 +154,11 @@ suspend fun handleLikeAction(currentUserId: String, targetOwnerId: String, db: F
             .set(mapOf("from" to currentUserId, "to" to targetOwnerId, "timestamp" to System.currentTimeMillis()))
             .await()
 
-        val reverseLike = db.collection("likes").document("${targetOwnerId}_${currentUserId}").get().await()
-        if (reverseLike.exists()) {
-            val matchId = if (currentUserId < targetOwnerId) "${currentUserId}_${targetOwnerId}" else "${targetOwnerId}_${currentUserId}"
-            val match = Match(id = matchId, userAId = currentUserId, userBId = targetOwnerId, timestamp = System.currentTimeMillis())
-            db.collection("matches").document(matchId).set(match).await()
-        }
+        // Por petición del usuario, se hace el Match instantáneo en lugar de requerir doble opt-in mutuo
+        val matchId = if (currentUserId < targetOwnerId) "${currentUserId}_${targetOwnerId}" else "${targetOwnerId}_${currentUserId}"
+        val match = Match(id = matchId, userAId = currentUserId, userBId = targetOwnerId, timestamp = System.currentTimeMillis())
+        db.collection("matches").document(matchId).set(match).await()
+        
     } catch (e: Exception) {
         Log.e("SwipeScreen", "Error liking", e)
     }
@@ -180,7 +179,7 @@ fun SwipeCardWithGestures(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(top = 80.dp, bottom = 40.dp, start = 16.dp, end = 16.dp)
+            .padding(top = 80.dp, bottom = 60.dp, start = 16.dp, end = 16.dp) // Adjusted padding
             .offset { IntOffset(offsetX.value.roundToInt(), offsetY.value.roundToInt()) }
             .graphicsLayer {
                 rotationZ = rotation.value
@@ -222,73 +221,81 @@ fun SwipeCardWithGestures(
                     }
                 } else Modifier
             )
-            .clip(RoundedCornerShape(24.dp))
-            .background(Color.LightGray)
+            // REMOVED CLIP FROM HERE SO BUTTONS CAN ESCAPE
     ) {
-        if (pet.imageUrls.isNotEmpty()) {
-            AsyncImage(
-                model = pet.imageUrls[0],
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
-            )
-        } else {
-             Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.secondaryContainer), contentAlignment = Alignment.Center) {
-                 Icon(Icons.Default.Favorite, contentDescription = null, modifier = Modifier.size(80.dp), tint = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha=0.3f))
-             }
-        }
-
-        // Glassmorphism Overlay
+        
+        // VISUAL CARD CONTAINER (CLIPPED)
         Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight(0.6f)
-                .align(Alignment.BottomCenter)
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.9f)),
-                        startY = 0f
-                    )
+                .fillMaxSize()
+                .clip(RoundedCornerShape(24.dp))
+                .background(Color.LightGray)
+        ) {
+            if (pet.imageUrls.isNotEmpty()) {
+                AsyncImage(
+                    model = pet.imageUrls[0],
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
                 )
-        )
-
-        // Progress Bar Mock (Top)
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(16.dp).align(Alignment.TopCenter),
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-             Box(modifier = Modifier.weight(1f).height(3.dp).background(Color.White, RoundedCornerShape(2.dp)))
-             Box(modifier = Modifier.weight(1f).height(3.dp).background(Color.White.copy(alpha=0.3f), RoundedCornerShape(2.dp)))
-        }
-
-        // Contenido Textual
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .align(Alignment.BottomStart)
-                .padding(24.dp)
-                .padding(bottom = 70.dp) // Leave space for floating buttons
-        ) {
-            Text(text = "${pet.name}, ${pet.age}", style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.ExtraBold), color = Color.White)
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(text = pet.breed, style = MaterialTheme.typography.titleMedium, color = Color.White.copy(alpha = 0.9f))
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Outlined.LocationOn, contentDescription = null, tint = Color.White.copy(alpha = 0.8f), modifier = Modifier.size(16.dp))
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(text = "A 1 km", style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.8f))
+            } else {
+                 Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.secondaryContainer), contentAlignment = Alignment.Center) {
+                     Icon(Icons.Default.Favorite, contentDescription = null, modifier = Modifier.size(80.dp), tint = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha=0.3f))
+                 }
             }
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(text = pet.shortDescription, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.primaryContainer)
-        }
 
-        // Overlay Buttons (Exactly like mockup)
+            // Glassmorphism Overlay
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight(0.6f)
+                    .align(Alignment.BottomCenter)
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.9f)),
+                            startY = 0f
+                        )
+                    )
+            )
+
+            // Progress Bar Mock (Top)
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(16.dp).align(Alignment.TopCenter),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                 Box(modifier = Modifier.weight(1f).height(3.dp).background(Color.White, RoundedCornerShape(2.dp)))
+                 Box(modifier = Modifier.weight(1f).height(3.dp).background(Color.White.copy(alpha=0.3f), RoundedCornerShape(2.dp)))
+            }
+
+            // Contenido Textual
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.BottomStart)
+                    .padding(24.dp)
+                    .padding(bottom = 70.dp) // Leave space so text doesn't overlap with outside buttons
+            ) {
+                Text(text = "${pet.name}, ${pet.age}", style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.ExtraBold), color = Color.White)
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(text = pet.breed, style = MaterialTheme.typography.titleMedium, color = Color.White.copy(alpha = 0.9f))
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Outlined.LocationOn, contentDescription = null, tint = Color.White.copy(alpha = 0.8f), modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(text = "A 1 km", style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.8f))
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(text = pet.shortDescription, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.primaryContainer)
+            }
+        } // End of Visual Card Container
+
+        // Overlay Buttons (Completely safe from Clipping now)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .align(Alignment.BottomCenter)
-                .offset(y = 28.dp) // half-outside
+                .offset(y = 36.dp) // Protruding outwards
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
