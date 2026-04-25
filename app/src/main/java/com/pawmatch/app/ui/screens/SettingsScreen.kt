@@ -26,14 +26,51 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 
 import com.pawmatch.app.ui.theme.LocalThemeManager
 
 @Composable
-fun SettingsScreen(onNavigateToEditProfile: () -> Unit, onNavigateToMatchingPrefs: () -> Unit) {
+fun SettingsScreen(
+    onNavigateToEditProfile: () -> Unit,
+    onNavigateToMatchingPrefs: () -> Unit,
+    onNavigateToPrivacy: () -> Unit
+) {
     val auth = FirebaseAuth.getInstance()
+    val db = FirebaseFirestore.getInstance()
+    val currentUid = auth.currentUser?.uid
     val isDarkThemeState = LocalThemeManager.current
     var isDarkMode by isDarkThemeState
+
+    var userName by remember { mutableStateOf("Cargando...") }
+    var petName by remember { mutableStateOf("...") }
+    var profileImageUrl by remember { mutableStateOf<String?>(null) }
+
+    DisposableEffect(currentUid) {
+        if (currentUid == null) return@DisposableEffect onDispose {}
+
+        val userListener = db.collection("users").document(currentUid).addSnapshotListener { snapshot, _ ->
+            if (snapshot != null && snapshot.exists()) {
+                userName = snapshot.getString("name")?.takeIf { it.isNotBlank() } ?: "Usuario"
+            }
+        }
+        
+        val petListener = db.collection("pets").whereEqualTo("ownerId", currentUid).addSnapshotListener { snapshot, _ ->
+            if (snapshot != null && !snapshot.isEmpty) {
+                val petDoc = snapshot.documents.first()
+                petName = petDoc.getString("name")?.takeIf { it.isNotBlank() } ?: "Mascota"
+                val urls = petDoc.get("imageUrls") as? List<*>
+                if (urls != null && urls.isNotEmpty()) {
+                    profileImageUrl = urls[0] as? String
+                }
+            }
+        }
+        
+        onDispose {
+            userListener.remove()
+            petListener.remove()
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -55,7 +92,7 @@ fun SettingsScreen(onNavigateToEditProfile: () -> Unit, onNavigateToMatchingPref
         ) {
             Box(contentAlignment = Alignment.BottomEnd) {
                 AsyncImage(
-                    model = "https://images.unsplash.com/photo-1544568100-847a948585b9?auto=format&fit=crop&w=300&q=80",
+                    model = profileImageUrl ?: "https://images.unsplash.com/photo-1544568100-847a948585b9?auto=format&fit=crop&w=300&q=80",
                     contentDescription = "Profile Picture",
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.size(100.dp).clip(CircleShape).background(Color.LightGray)
@@ -72,7 +109,12 @@ fun SettingsScreen(onNavigateToEditProfile: () -> Unit, onNavigateToMatchingPref
                 }
             }
             Spacer(modifier = Modifier.height(16.dp))
-            Text("Sofía & Coco", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
+            Text(
+                if (petName == "...") userName else "$userName & $petName", 
+                style = MaterialTheme.typography.titleLarge, 
+                fontWeight = FontWeight.Bold, 
+                color = MaterialTheme.colorScheme.onBackground
+            )
             Text(auth.currentUser?.email ?: "sofia@example.com", style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
             
             Spacer(modifier = Modifier.height(16.dp))
@@ -102,7 +144,7 @@ fun SettingsScreen(onNavigateToEditProfile: () -> Unit, onNavigateToMatchingPref
                     Divider(modifier = Modifier.padding(start=56.dp), color = MaterialTheme.colorScheme.background)
                     SettingsRow(icon = Icons.Default.Notifications, title = "Notificaciones", iconColor = MaterialTheme.colorScheme.primary, onClick = {})
                     Divider(modifier = Modifier.padding(start=56.dp), color = MaterialTheme.colorScheme.background)
-                    SettingsRow(icon = Icons.Default.Security, title = "Privacidad y Seguridad", iconColor = MaterialTheme.colorScheme.primary, onClick = {})
+                    SettingsRow(icon = Icons.Default.Security, title = "Privacidad y Seguridad", iconColor = MaterialTheme.colorScheme.primary, onClick = onNavigateToPrivacy)
                 }
             }
 

@@ -44,6 +44,17 @@ class MainActivity : ComponentActivity() {
                 PawMatchTheme(darkTheme = isDarkThemeState.value, dynamicColor = false) {
                     var isLoggedIn by remember { mutableStateOf(FirebaseAuth.getInstance().currentUser != null) }
 
+                    DisposableEffect(Unit) {
+                        val authListener = FirebaseAuth.AuthStateListener { auth ->
+                            isLoggedIn = auth.currentUser != null
+                        }
+                        val authInstance = FirebaseAuth.getInstance()
+                        authInstance.addAuthStateListener(authListener)
+                        onDispose {
+                            authInstance.removeAuthStateListener(authListener)
+                        }
+                    }
+
                     if (isLoggedIn) {
                         MainScreen()
                     } else {

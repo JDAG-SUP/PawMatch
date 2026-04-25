@@ -41,7 +41,7 @@ import kotlin.math.absoluteValue
 import kotlin.math.roundToInt
 
 @Composable
-fun SwipeScreen(modifier: Modifier = Modifier) {
+fun SwipeScreen(modifier: Modifier = Modifier, onNavigateToFilters: () -> Unit = {}) {
     val db = FirebaseFirestore.getInstance()
     val auth = FirebaseAuth.getInstance()
     val currentUserId = auth.currentUser?.uid ?: ""
@@ -58,15 +58,27 @@ fun SwipeScreen(modifier: Modifier = Modifier) {
                 currentUser = userDoc.toObject(User::class.java)
 
                 if (currentUser != null && currentUser!!.city.isNotEmpty()) {
-                    seedDatabaseIfEmpty(db, currentUser!!.city, currentUser!!.preferenceAnimalType.ifEmpty { "Perro" }, currentUserId)
+                    val animalType = userDoc.getString("preferenceAnimalType") ?: "Ambos"
+                    val minAge = userDoc.getDouble("preferenceMinAge")?.toInt() ?: 0
+                    val maxAge = userDoc.getDouble("preferenceMaxAge")?.toInt() ?: 20
 
-                    val petQuery = db.collection("pets")
+                    seedDatabaseIfEmpty(db, currentUser!!.city, animalType.ifEmpty { "Perro" }, currentUserId)
+
+                    var petQuery = db.collection("pets")
                         .whereEqualTo("city", currentUser!!.city)
-                        .whereEqualTo("animalType", currentUser!!.preferenceAnimalType)
-                        .get().await()
-                        
-                    val petsList = petQuery.documents.mapNotNull { it.toObject(Pet::class.java) }
-                    petsToSwipe = petsList.filter { it.ownerId != currentUserId }
+                    
+                    if (animalType != "Ambos" && animalType.isNotEmpty()) {
+                        petQuery = petQuery.whereEqualTo("animalType", animalType)
+                    }
+
+                    val results = petQuery.get().await()
+                    val petsList = results.documents.mapNotNull { it.toObject(Pet::class.java) }
+                    
+                    // Client-side filtering for Age due to Firebase inequality limitations
+                    petsToSwipe = petsList.filter { pet ->
+                        val petAge = pet.age.filter { it.isDigit() }.toIntOrNull() ?: 0
+                        pet.ownerId != currentUserId && petAge in minAge..maxAge
+                    }
                 }
             } catch (e: Exception) {
                 Log.e("SwipeScreen", "Error loading data", e)
@@ -136,7 +148,7 @@ fun SwipeScreen(modifier: Modifier = Modifier) {
                     shape = CircleShape,
                     color = Color.White,
                     shadowElevation = 2.dp,
-                    modifier = Modifier.size(40.dp)
+                    modifier = Modifier.size(40.dp).clickable { onNavigateToFilters() }
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(Icons.Outlined.Tune, contentDescription = "Filtros", tint = MaterialTheme.colorScheme.onBackground)

@@ -19,14 +19,45 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
+import android.util.Log
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.launch
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MatchingPreferencesScreen() {
+fun MatchingPreferencesScreen(onNavigateBack: () -> Unit) {
     var selectedPetType by remember { mutableStateOf("Ambos") }
     var locationSwitch by remember { mutableStateOf(true) }
     var maxDistance by remember { mutableStateOf(15f) }
     var minAge by remember { mutableStateOf(0f) }
     var maxAge by remember { mutableStateOf(5f) }
+    
+    val context = LocalContext.current
+    val db = FirebaseFirestore.getInstance()
+    val auth = FirebaseAuth.getInstance()
+    val currentUser = auth.currentUser
+    val coroutineScope = rememberCoroutineScope()
+    var isLoading by remember { mutableStateOf(true) }
+
+    LaunchedEffect(currentUser?.uid) {
+        if (currentUser != null) {
+            try {
+                val doc = db.collection("users").document(currentUser.uid).get().await()
+                if (doc.exists()) {
+                    selectedPetType = doc.getString("preferenceAnimalType")?.takeIf { it.isNotEmpty() } ?: "Ambos"
+                    minAge = doc.getDouble("preferenceMinAge")?.toFloat() ?: 0f
+                    maxAge = doc.getDouble("preferenceMaxAge")?.toFloat() ?: 5f
+                }
+            } catch (e: Exception) {
+                Log.e("MatchingPrefs", "Error fetching prefs", e)
+            }
+        }
+        isLoading = false
+    }
 
     Column(
         modifier = Modifier
@@ -39,7 +70,7 @@ fun MatchingPreferencesScreen() {
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 20.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(Icons.Default.Close, contentDescription = "Close", tint = MaterialTheme.colorScheme.onBackground)
+            Icon(Icons.Default.Close, contentDescription = "Close", tint = MaterialTheme.colorScheme.onBackground, modifier = Modifier.clickable { onNavigateBack() }.padding(8.dp))
             Spacer(modifier = Modifier.width(32.dp))
             Text("Preferencias de Matching", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
         }
@@ -144,7 +175,24 @@ fun MatchingPreferencesScreen() {
             Spacer(modifier = Modifier.height(40.dp))
             
             Button(
-                onClick = {},
+                onClick = {
+                    if (currentUser != null) {
+                        coroutineScope.launch {
+                            try {
+                                val updates = mapOf(
+                                    "preferenceAnimalType" to selectedPetType,
+                                    "preferenceMinAge" to minAge.toDouble(),
+                                    "preferenceMaxAge" to maxAge.toDouble()
+                                )
+                                db.collection("users").document(currentUser.uid).update(updates).await()
+                                Toast.makeText(context, "Filtros aplicados", Toast.LENGTH_SHORT).show()
+                                onNavigateBack()
+                            } catch (e: Exception) {
+                                Log.e("MatchingPrefs", "Error saving prefs", e)
+                            }
+                        }
+                    }
+                },
                 modifier = Modifier.fillMaxWidth().height(56.dp),
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)

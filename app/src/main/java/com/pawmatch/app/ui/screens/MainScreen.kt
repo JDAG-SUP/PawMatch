@@ -92,7 +92,11 @@ fun MainScreen() {
             modifier = Modifier.padding(innerPadding)
         ) {
             composable(BottomNavItem.Explorar.screen_route) {
-                SwipeScreen()
+                SwipeScreen(
+                    onNavigateToFilters = {
+                        navController.navigate("matching_prefs")
+                    }
+                )
             }
             composable(BottomNavItem.Matches.screen_route) {
                 MatchesScreen(
@@ -114,6 +118,9 @@ fun MainScreen() {
                     },
                     onNavigateToMatchingPrefs = {
                         navController.navigate("matching_prefs")
+                    },
+                    onNavigateToPrivacy = {
+                        navController.navigate("privacy_security")
                     }
                 )
             }
@@ -121,7 +128,14 @@ fun MainScreen() {
                 ProfileScreen()
             }
             composable("matching_prefs") {
-                MatchingPreferencesScreen()
+                MatchingPreferencesScreen(
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+            composable("privacy_security") {
+                PrivacySecurityScreen(
+                    onNavigateBack = { navController.popBackStack() }
+                )
             }
             composable("public_profile/{userId}") { backStackEntry ->
                 val userId = backStackEntry.arguments?.getString("userId")
