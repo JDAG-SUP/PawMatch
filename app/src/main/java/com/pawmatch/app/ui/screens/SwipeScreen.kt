@@ -49,6 +49,7 @@ fun SwipeScreen(modifier: Modifier = Modifier, onNavigateToFilters: () -> Unit =
 
     var currentUser by remember { mutableStateOf<User?>(null) }
     var petsToSwipe by remember { mutableStateOf<List<Pet>>(emptyList()) }
+    var isProfileIncomplete by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(true) }
 
     LaunchedEffect(currentUserId) {
@@ -57,15 +58,22 @@ fun SwipeScreen(modifier: Modifier = Modifier, onNavigateToFilters: () -> Unit =
                 val userDoc = db.collection("users").document(currentUserId).get().await()
                 currentUser = userDoc.toObject(User::class.java)
 
-                if (currentUser != null && currentUser!!.city.isNotEmpty()) {
-                    val animalType = userDoc.getString("preferenceAnimalType") ?: "Ambos"
-                    val minAge = userDoc.getDouble("preferenceMinAge")?.toInt() ?: 0
-                    val maxAge = userDoc.getDouble("preferenceMaxAge")?.toInt() ?: 20
+                if (currentUser != null) {
+                    val name = userDoc.getString("name") ?: ""
+                    val petName = userDoc.getString("petName") ?: ""
+                    if (name.isBlank() || petName.isBlank()) {
+                        isProfileIncomplete = true
+                    } else {
+                        isProfileIncomplete = false
+                        val animalType = userDoc.getString("preferenceAnimalType") ?: "Ambos"
+                        val minAge = userDoc.getDouble("preferenceMinAge")?.toInt() ?: 0
+                        val maxAge = userDoc.getDouble("preferenceMaxAge")?.toInt() ?: 20
+                        val userCity = userDoc.getString("petLocation")?.takeIf { it.isNotBlank() } ?: "Ciudad de México"
 
-                    seedDatabaseIfEmpty(db, currentUser!!.city, animalType.ifEmpty { "Perro" }, currentUserId)
+                        seedDatabaseIfEmpty(db, userCity, animalType.ifEmpty { "Perro" }, currentUserId)
 
-                    var petQuery = db.collection("pets")
-                        .whereEqualTo("city", currentUser!!.city)
+                        var petQuery = db.collection("pets")
+                            .whereEqualTo("city", userCity)
                     
                     if (animalType != "Ambos" && animalType.isNotEmpty()) {
                         petQuery = petQuery.whereEqualTo("animalType", animalType)
@@ -102,11 +110,11 @@ fun SwipeScreen(modifier: Modifier = Modifier, onNavigateToFilters: () -> Unit =
         ) {
             if (isLoading) {
                 CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
-            } else if (currentUser?.city.isNullOrEmpty()) {
+            } else if (isProfileIncomplete) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(32.dp)) {
                     Text("¡Bienvenido a PetMatch!", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                     Spacer(Modifier.height(16.dp))
-                    Text("Por favor completa tu Perfil Primero desde la barra de navegación para poder descubrir compañeros peludos.", 
+                    Text("Por favor completa tu Perfil y el de tu mascota desde la sección 'Perfil' (Configuración) para poder descubrir compañeros peludos.", 
                         style = MaterialTheme.typography.bodyLarge, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
                 }
             } else if (petsToSwipe.isEmpty()) {
