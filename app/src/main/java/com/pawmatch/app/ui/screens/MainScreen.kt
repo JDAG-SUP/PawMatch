@@ -96,6 +96,18 @@ fun MainScreen() {
                     onNavigateToFilters = {
                         navController.navigate("matching_prefs")
                     }
+                    // Ruta del detalle de chat. Recibe el chatId por argumento de navegación.
+                    // El popBackStack devuelve al usuario a la lista de conversaciones.
+                    composable("chat_detail/{chatId}") { backStackEntry ->
+                        val chatId = backStackEntry.arguments?.getString("chatId")
+                        if (chatId != null) {
+                            ChatDetailScreen(
+                        chatId = chatId,
+                        onNavigateBack = { navController.popBackStack() },
+                    )
+                }
+            }
+                    
                 )
             }
             composable(BottomNavItem.Matches.screen_route) {
