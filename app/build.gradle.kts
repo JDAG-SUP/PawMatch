@@ -1,7 +1,7 @@
 plugins {
-    alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
-    alias(libs.plugins.google.services)
+    id("com.android.application")
+    id("org.jetbrains.kotlin.android")
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -53,6 +53,13 @@ android {
 }
 
 dependencies {
+    configurations.all {
+        resolutionStrategy.eachDependency {
+            if (requested.group == "org.jetbrains.kotlin") {
+                useVersion("1.9.23")
+            }
+        }
+    }
     implementation(libs.androidx.core.ktx)
 
     implementation(libs.bundles.androidx.lifeycle)

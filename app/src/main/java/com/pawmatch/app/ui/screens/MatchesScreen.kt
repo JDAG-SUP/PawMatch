@@ -8,6 +8,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ChatBubbleOutline
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -20,31 +22,48 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.pawmatch.app.data.chat.ChatRepository
+import com.pawmatch.app.data.chat.FirestoreChatRepository
 import com.pawmatch.app.models.Match
 import com.pawmatch.app.models.Pet
 import com.pawmatch.app.models.User
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
 data class MatchDisplayData(
     val matchedUserId: String,
     val matchedUser: User,
-    val matchedPet: Pet?
+    val matchedPet: Pet?,
 )
 
 @Composable
-fun MatchesScreen(onNavigateToPublicProfile: (String) -> Unit) {
+fun MatchesScreen(
+    onNavigateToPublicProfile: (String) -> Unit,
+    // Callback que recibe el chatId resuelto y navega al detalle.
+    // Quien llama (MainScreen) solo se ocupa de la navegación.
+    onOpenChat: (chatId: String) -> Unit,
+) {
     val db = FirebaseFirestore.getInstance()
     val auth = FirebaseAuth.getInstance()
     val currentUserId = auth.currentUser?.uid ?: return
 
+    // Repositorio de chat reutilizado entre interacciones de la pantalla.
+    // Se memoriza para no instanciarlo en cada recomposición.
+    val chatRepository: ChatRepository = remember { FirestoreChatRepository() }
+    val coroutineScope = rememberCoroutineScope()
+
     var matchesList by remember { mutableStateOf<List<MatchDisplayData>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
+
+    // Bandera para evitar disparar varias veces la apertura del chat
+    // si el usuario toca el ícono repetidamente mientras se resuelve.
+    var isOpeningChat by remember { mutableStateOf(false) }
 
     LaunchedEffect(currentUserId) {
         try {
             val queryA = db.collection("matches").whereEqualTo("userAId", currentUserId).get().await()
             val queryB = db.collection("matches").whereEqualTo("userBId", currentUserId).get().await()
-            
+
             val allMatches = (queryA.documents + queryB.documents)
                 .mapNotNull { it.toObject(Match::class.java) }
                 .distinctBy { it.id }
@@ -60,12 +79,11 @@ fun MatchesScreen(onNavigateToPublicProfile: (String) -> Unit) {
                 if (targetUser != null) {
                     val targetPetQuery = db.collection("pets").whereEqualTo("ownerId", targetUserId).get().await()
                     val targetPet = targetPetQuery.documents.firstOrNull()?.toObject(Pet::class.java)
-                    
+
                     displayData.add(MatchDisplayData(targetUserId, targetUser, targetPet))
                 }
             }
             matchesList = displayData
-            
         } catch (e: Exception) {
             Log.e("MatchesScreen", "Error loading matches", e)
         } finally {
@@ -84,14 +102,46 @@ fun MatchesScreen(onNavigateToPublicProfile: (String) -> Unit) {
             }
         } else if (matchesList.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
-                Text("Aún no tienes matches. Sigue deslizando para encontrar amigos para tu mascota.", style = MaterialTheme.typography.bodyLarge, color = Color.Gray, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                Text(
+                    "Aún no tienes matches. Sigue deslizando para encontrar amigos para tu mascota.",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = Color.Gray,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                )
             }
         } else {
             LazyColumn(contentPadding = PaddingValues(bottom = 80.dp)) {
                 items(matchesList) { matchData ->
-                    MatchItemRowPremium(matchData = matchData, onClick = {
-                        onNavigateToPublicProfile(matchData.matchedUserId)
-                    })
+                    MatchItemRowPremium(
+                        matchData = matchData,
+                        onClick = { onNavigateToPublicProfile(matchData.matchedUserId) },
+                        // Al tocar el ícono de chat resolvemos el chatId vía repositorio
+                        // y delegamos la navegación al callback externo.
+                        onOpenChat = {
+                            if (isOpeningChat) return@MatchItemRowPremium
+                            isOpeningChat = true
+                            coroutineScope.launch {
+                                val current = auth.currentUser
+                                if (current != null) {
+                                    // El nombre del usuario actual se construye desde Firebase Auth.
+                                    val currentName = current.displayName
+                                        ?: current.email?.substringBefore("@")
+                                        ?: ""
+                                    chatRepository.getOrCreateConversation(
+                                        currentUserId = current.uid,
+                                        currentUserName = currentName,
+                                        otherUserId = matchData.matchedUserId,
+                                        otherUserName = matchData.matchedUser.name,
+                                    ).onSuccess { chatId ->
+                                        onOpenChat(chatId)
+                                    }.onFailure { error ->
+                                        Log.e("MatchesScreen", "Error opening chat", error)
+                                    }
+                                }
+                                isOpeningChat = false
+                            }
+                        },
+                    )
                 }
             }
         }
@@ -99,7 +149,11 @@ fun MatchesScreen(onNavigateToPublicProfile: (String) -> Unit) {
 }
 
 @Composable
-fun MatchItemRowPremium(matchData: MatchDisplayData, onClick: () -> Unit) {
+fun MatchItemRowPremium(
+    matchData: MatchDisplayData,
+    onClick: () -> Unit,
+    onOpenChat: () -> Unit,
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -107,22 +161,25 @@ fun MatchItemRowPremium(matchData: MatchDisplayData, onClick: () -> Unit) {
             .clickable { onClick() },
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            // Pet Avatar
+            // Avatar de la mascota (sin cambios).
             if (matchData.matchedPet != null && matchData.matchedPet.imageUrls.isNotEmpty()) {
-               AsyncImage(
-                   model = matchData.matchedPet.imageUrls.first(),
-                   contentDescription = "Pet Image",
-                   contentScale = ContentScale.Crop,
-                   modifier = Modifier.size(72.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant)
-               )
+                AsyncImage(
+                    model = matchData.matchedPet.imageUrls.first(),
+                    contentDescription = "Pet Image",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.size(72.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant),
+                )
             } else {
-                Box(modifier = Modifier.size(72.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer), contentAlignment = Alignment.Center) {
+                Box(
+                    modifier = Modifier.size(72.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer),
+                    contentAlignment = Alignment.Center,
+                ) {
                     Text("\uD83D\uDC3E", style = MaterialTheme.typography.headlineMedium)
                 }
             }
@@ -134,6 +191,16 @@ fun MatchItemRowPremium(matchData: MatchDisplayData, onClick: () -> Unit) {
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(text = "Dueño: ${matchData.matchedUser.name}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(text = "${matchData.matchedPet?.breed ?: "Raza"} • ${matchData.matchedPet?.city ?: ""}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+            }
+
+            // Botón de acceso directo al chat con este match.
+            // Compose absorbe el click para que NO se propague al Card.
+            IconButton(onClick = onOpenChat) {
+                Icon(
+                    imageVector = Icons.Default.ChatBubbleOutline,
+                    contentDescription = "Abrir chat",
+                    tint = MaterialTheme.colorScheme.primary,
+                )
             }
         }
     }
