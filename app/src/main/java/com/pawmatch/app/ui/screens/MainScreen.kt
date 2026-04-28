@@ -114,7 +114,11 @@ fun MainScreen() {
                 MatchesScreen(
                     onNavigateToPublicProfile = { userId ->
                         navController.navigate("public_profile/$userId")
-                    }
+                    },
+                    // Una vez resuelto el chatId, navegamos al detalle reusando la ruta ya existente.
+                    onOpenChat = { chatId ->
+                        navController.navigate("chat_detail/$chatId")
+                    },
                 )
             }
             composable(BottomNavItem.Eventos.screen_route) {
