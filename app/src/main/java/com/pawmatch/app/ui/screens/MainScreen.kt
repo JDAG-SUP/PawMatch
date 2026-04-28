@@ -120,8 +120,14 @@ fun MainScreen() {
             composable(BottomNavItem.Eventos.screen_route) {
                 EventsScreen()
             }
-            composable(BottomNavItem.Chats.screen_route) {
-                ChatsScreen()
+                        composable(BottomNavItem.Chats.screen_route) {
+                ChatsScreen(
+                    // Al tocar una conversación, navegamos al detalle pasando el chatId
+                    // como segmento de la ruta.
+                    onConversationClick = { chatId ->
+                        navController.navigate("chat_detail/$chatId")
+                    },
+                )
             }
             composable(BottomNavItem.Perfil.screen_route) {
                 SettingsScreen(
