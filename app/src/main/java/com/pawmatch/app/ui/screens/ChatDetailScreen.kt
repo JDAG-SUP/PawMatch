@@ -28,9 +28,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.pawmatch.app.models.Message
 import com.pawmatch.app.ui.viewmodels.ChatDetailViewModel
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import com.pawmatch.app.utils.formatMessageTimestamp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -215,7 +213,7 @@ private fun MessageBubble(
             )
             Spacer(modifier = Modifier.height(2.dp))
             Text(
-                text = formatMessageTime(message.createdAt),
+                text = formatMessageTimestamp(message.createdAt),
                 style = MaterialTheme.typography.labelSmall,
                 color = textColor.copy(alpha = 0.7f),
             )
@@ -288,7 +286,7 @@ private fun MessageInputBar(
 
 // Formato corto para la hora dentro de una burbuja (HH:mm en el locale del dispositivo).
 // El helper definitivo se introduce en un commit posterior y reemplaza este inline.
-private fun formatMessageTime(epochMillis: Long): String {
+private fun formatMessageTimestamp(epochMillis: Long): String {
     if (epochMillis <= 0L) return ""
     return SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(epochMillis))
 }

@@ -1,5 +1,6 @@
 package com.pawmatch.app.ui.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -21,10 +22,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.pawmatch.app.utils.formatConversationTimestamp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ChatsScreen() {
+fun ChatsScreen(
+    onConversationClick: (String) -> Unit
+) {
     var searchQuery by remember { mutableStateOf("") }
     
     val chatList = listOf(
@@ -77,11 +81,16 @@ fun ChatsScreen() {
                 EventChatRow()
                 Divider(color = MaterialTheme.colorScheme.onBackground.copy(alpha=0.05f))
             }
-            
+
             // DMs
             items(chatList) { chat ->
-                DirectMessageRow(chat)
-                Divider(color = MaterialTheme.colorScheme.onBackground.copy(alpha=0.05f))
+                DirectMessageRow(
+                    chat = chat,
+                    onClick = {
+                        onConversationClick(chat.name) // Temporal: luego será el chatId real de Firestore
+                    }
+                )
+                Divider(color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.05f))
             }
         }
     }
@@ -130,10 +139,15 @@ fun EventChatRow() {
 }
 
 @Composable
-fun DirectMessageRow(chat: ChatModel) {
+fun DirectMessageRow(
+    chat: ChatModel,
+    onClick: () -> Unit
+) {
     Row(
+
         modifier = Modifier
             .fillMaxWidth()
+            .clickable { onClick()}
             .background(MaterialTheme.colorScheme.surface.copy(alpha=0.5f))
             .padding(horizontal = 24.dp, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically

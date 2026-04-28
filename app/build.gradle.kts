@@ -73,7 +73,7 @@ dependencies {
 
     implementation(libs.androidx.splash.screen)
 
-    implementation(libs.vinchamp77.buildutils)
+
 
     // Navigation and Image loading
     implementation(libs.navigation.compose)

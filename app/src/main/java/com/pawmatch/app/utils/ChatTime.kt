@@ -21,6 +21,7 @@ import java.util.Locale
 // Formato para la lista de conversaciones:
 // si el último mensaje es de hoy se muestra la hora ("HH:mm"),
 // si es de otro día se muestra la fecha corta ("dd/MM").
+
 fun formatConversationTimestamp(epochMillis: Long): String {
     if (epochMillis <= 0L) return ""
     val now = Calendar.getInstance()
